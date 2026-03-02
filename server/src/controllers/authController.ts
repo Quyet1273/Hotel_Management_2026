@@ -102,12 +102,15 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // ===== ACCESS TOKEN =====
+    // Tăng thời gian sống của Access Token lên cao (ví dụ 1 ngày) để không cần refresh token
     const accessToken = jwt.sign(
       { id: user.id, role: user.role },
       process.env.ACCESS_TOKEN_SECRET as string,
-      { expiresIn: "15m" }
+      { expiresIn: "1d" } 
     )
 
+    // ===== TẠM THỜI BỎ REFRESH TOKEN VÀ COOKIE ĐỂ CHẠY LOCAL =====
+    /*
     // ===== REFRESH TOKEN =====
     const refreshToken = jwt.sign(
       { id: user.id, role: user.role },
@@ -118,16 +121,17 @@ export const login = async (req: Request, res: Response) => {
     // ===== SET COOKIE =====
     res.cookie("refresh_token", refreshToken, {
       httpOnly: true,
-      secure: true,        // BẮT BUỘC production
-      sameSite: "none",    // BẮT BUỘC cross-site
+      secure: false,        
+      sameSite: "lax",    
       maxAge: 7 * 24 * 60 * 60 * 1000,
     })
+    */
 
-    delete user.password
+    if (user.password) delete user.password
 
     return res.status(200).json({
       message: "Đăng nhập thành công",
-      accessToken,
+      accessToken, // Frontend sẽ lấy token này lưu vào localStorage
       user,
     })
   } catch (error) {
@@ -137,38 +141,37 @@ export const login = async (req: Request, res: Response) => {
     })
   }
 }
-// ================= REFRESH TOKEN =================
+
+// ================= REFRESH TOKEN (Tạm thời vô hiệu hóa) =================
 export const refreshToken = async (req: Request, res: Response) => {
+  return res.status(404).json({ message: "Tính năng này tạm thời bị tắt" })
+  /*
   try {
     const token = req.cookies?.refresh_token
-
-    if (!token) {
-      return res.status(401).json({ message: "No refresh token" })
-    }
+    if (!token) return res.status(401).json({ message: "No refresh token" })
 
     jwt.verify(
       token,
       process.env.REFRESH_TOKEN_SECRET as string,
       (err: any, decoded: any) => {
-        if (err) {
-          return res.status(403).json({ message: "Invalid refresh token" })
-        }
+        if (err) return res.status(403).json({ message: "Invalid refresh token" })
 
         const newAccessToken = jwt.sign(
           { id: decoded.id, role: decoded.role },
           process.env.ACCESS_TOKEN_SECRET as string,
           { expiresIn: "15m" }
         )
-
         res.json({ accessToken: newAccessToken })
       }
     )
   } catch (error) {
     res.status(500).json({ message: "Refresh token error" })
   }
+  */
 }
+
 // ================= LOGOUT =================
 export const logout = async (_req: Request, res: Response) => {
-  res.clearCookie("refresh_token")
+  // res.clearCookie("refresh_token") // Tắt xóa cookie nếu không dùng
   return res.json({ message: "Logout successful" })
 }
