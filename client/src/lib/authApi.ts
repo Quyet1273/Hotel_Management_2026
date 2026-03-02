@@ -17,13 +17,14 @@ export interface RegisterPayload {
 
 export interface AuthResponse {
   accessToken: string
-  refreshToken?: string
+  refreshToken?: string // Vẫn giữ type để không lỗi code chỗ khác
   user: any
 }
 
 /* ================= API ================= */
 export const authApi = {
   login(data: LoginPayload) {
+    // Gọi API login, nhận về accessToken
     return axiosClient.post<AuthResponse>("/auth/login", data)
   },
 
@@ -35,16 +36,20 @@ export const authApi = {
       phone: data.phone,
       address: data.address,
       password: data.password,
-      confirmPassword: data.confirmPassword, // ✅ BẮT BUỘC
+      confirmPassword: data.confirmPassword,
     }
-      return axiosClient.post("/auth/register", payload)
+    return axiosClient.post("/auth/register", payload)
   },
 
+  // TẠM THỜI COMMENT VÌ BACKEND ĐÃ TẮT COOKIE/REFRESH
+  /*
   refreshToken() {
     return axiosClient.post<{ accessToken: string }>("/auth/refresh-token")
   },
+  */
 
   logout() {
+    // Khi logout, nhớ xóa token ở localStorage trong Component xử lý
     return axiosClient.post("/auth/logout")
   },
 

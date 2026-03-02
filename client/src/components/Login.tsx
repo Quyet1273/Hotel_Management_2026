@@ -58,35 +58,34 @@ export function Login({ onLogin, onSwitchToRegister }: LoginProps) {
     return isValid;
   };
 
-  // ================= SUBMIT LOGIN =================
+ // ================= SUBMIT LOGIN =================
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault()
-  if (!validateForm()) return
-  onLogin(email, password)
-
+    e.preventDefault();
+    if (!validateForm()) return;
 
     try {
       setLoading(true);
       setErrors((prev) => ({ ...prev, api: "" }));
 
+      // 1. Gọi API đến Backend (Render)
       const res = await authApi.login({
         email,
         password,
       });
 
-      /**
-       * Backend trả:
-       * {
-       *   accessToken,
-       *   user
-       * }
-       * Refresh token đã nằm trong COOKIE (httpOnly)
-       */
-      localStorage.setItem("access_token", res.data.accessToken);
+      // 2. Lưu token vào localStorage đúng key "access_token" mà axiosClient đang đợi
+      if (res.data && res.data.accessToken) {
+        localStorage.setItem("access_token", res.data.accessToken);
+        
+        console.log("LOGIN SUCCESS:", res.data.user);
 
-      // 👉 Sau này redirect dashboard / set auth context
-      console.log("LOGIN SUCCESS:", res.data.user);
+        // 3. Chỉ gọi onLogin HOẶC chuyển trang SAU KHI đã lưu token thành công
+        // Nếu onLogin dùng để cập nhật state user ở App.tsx hoặc điều hướng
+        onLogin(email, password); 
+      }
+
     } catch (err: any) {
+      console.error("Lỗi đăng nhập:", err);
       setErrors((prev) => ({
         ...prev,
         api:

@@ -4,8 +4,8 @@ import axios, {
 } from "axios"
 
 // ================= BASE URL =================
-const API_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:3001/api"
+// Ưu tiên lấy từ file .env, nếu không có mới dùng fallback localhost
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8081/api"
 
 // ================= AXIOS INSTANCE =================
 const axiosClient = axios.create({
@@ -13,12 +13,14 @@ const axiosClient = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  withCredentials: true, // BẮT BUỘC nếu dùng refresh token cookie
+  // Để false để tránh lỗi CORS khi deploy nếu chưa cấu hình Cookie chuẩn
+  withCredentials: true, 
 })
 
 // ================= REQUEST INTERCEPTOR =================
 axiosClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    // Đảm bảo key "access_token" khớp với code ở trang Login
     const token = localStorage.getItem("access_token")
 
     if (token && config.headers) {
@@ -34,41 +36,13 @@ axiosClient.interceptors.request.use(
 axiosClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<any>) => {
-    const originalRequest: any = error.config
-
-    if (!originalRequest) {
-      return Promise.reject(error)
-    }
-
-    const isUnauthorized = error.response?.status === 401
-    const isRefreshCall = originalRequest.url?.includes(
-      "/auth/refresh-token"
-    )
-
-    if (isUnauthorized && !originalRequest._retry && !isRefreshCall) {
-      originalRequest._retry = true
-
-      try {
-        // 🔥 DÙNG CHÍNH axiosClient để giữ baseURL + credentials
-        const res = await axiosClient.post("/auth/refresh-token")
-
-        const newAccessToken = res.data.accessToken
-
-        if (newAccessToken) {
-          localStorage.setItem("access_token", newAccessToken)
-
-          originalRequest.headers.Authorization =
-            `Bearer ${newAccessToken}`
-
-          return axiosClient(originalRequest)
-        }
-      } catch (refreshError) {
-        localStorage.removeItem("access_token")
+    // Tự động đá về trang login nếu token hết hạn (lỗi 401)
+    if (error.response?.status === 401) {
+      localStorage.removeItem("access_token")
+      if (window.location.pathname !== "/login") {
         window.location.href = "/login"
-        return Promise.reject(refreshError)
       }
     }
-
     return Promise.reject(error)
   }
 )
