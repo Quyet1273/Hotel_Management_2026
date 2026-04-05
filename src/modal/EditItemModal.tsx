@@ -55,82 +55,197 @@ export function EditItemModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[110] p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-[1.5rem] shadow-2xl max-w-md w-full overflow-hidden border border-gray-200">
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000,
+      padding: '1rem',
+      backdropFilter: 'blur(4px)'
+    }}>
+      <div style={{
+        backgroundColor: '#ffffff',
+        borderRadius: '1.5rem',
+        maxWidth: '28rem',
+        width: '100%',
+        overflow: 'hidden',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        border: '1px solid #e5e7eb'
+      }}>
         
-        {/* HEADER: Dùng style trực tiếp để ép màu Cam (Amber) */}
-        <div 
-          style={{ backgroundColor: '#f59e0b' }} 
-          className="p-5 text-white flex justify-between items-center"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-black/20 rounded-xl flex items-center justify-center">
-              <Package className="w-5 h-5 text-white" />
+        {/* HEADER: Màu Cam Amber */}
+        <div style={{ 
+          backgroundColor: '#f59e0b', 
+          padding: '1.25rem', 
+          color: '#ffffff', 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center' 
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ 
+              width: '2.5rem', 
+              height: '2.5rem', 
+              backgroundColor: 'rgba(0, 0, 0, 0.2)', 
+              borderRadius: '0.75rem', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center' 
+            }}>
+              <Package style={{ width: '1.25rem', height: '1.25rem', color: '#ffffff' }} />
             </div>
-            <h3 className="text-lg font-bold uppercase">Chỉnh sửa vật tư</h3>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: '900', margin: 0, textTransform: 'uppercase', letterSpacing: '0.025em' }}>
+              Chỉnh sửa vật tư
+            </h3>
           </div>
           
-          {/* NÚT X: Cho màu nền đen nhẹ để nổi bật trên nền cam */}
           <button
             onClick={onClose}
-            className="p-2 bg-black/10 hover:bg-black/20 rounded-full text-white transition-colors"
+            style={{ 
+              padding: '0.5rem', 
+              backgroundColor: 'rgba(0, 0, 0, 0.1)', 
+              border: 'none', 
+              borderRadius: '50%', 
+              color: '#ffffff', 
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
           >
-            <X className="w-6 h-6" />
+            <X style={{ width: '1.5rem', height: '1.5rem' }} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-600 uppercase ml-1">
+        <form onSubmit={handleSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          
+          {/* Tên vật tư */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: '800', color: '#4b5563', textTransform: 'uppercase', marginLeft: '0.25rem' }}>
               Tên vật tư
             </label>
             <input
               required
-              className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl font-semibold text-gray-800 focus:border-amber-500 outline-none transition-all"
+              style={{ 
+                width: '100%', 
+                padding: '0.75rem 1rem', 
+                backgroundColor: '#f9fafb', 
+                border: '2px solid #e5e7eb', 
+                borderRadius: '0.75rem', 
+                fontWeight: '700', 
+                color: '#111827', 
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-600 uppercase ml-1">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            {/* Đơn vị */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: '800', color: '#4b5563', textTransform: 'uppercase', marginLeft: '0.25rem' }}>
                 Đơn vị
               </label>
               <input
-                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl font-semibold text-gray-800 focus:border-amber-500 outline-none transition-all"
+                style={{ 
+                  width: '100%', 
+                  padding: '0.75rem 1rem', 
+                  backgroundColor: '#f9fafb', 
+                  border: '2px solid #e5e7eb', 
+                  borderRadius: '0.75rem', 
+                  fontWeight: '700', 
+                  color: '#111827', 
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
                 value={form.unit}
                 onChange={(e) => setForm({ ...form, unit: e.target.value })}
               />
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-600 uppercase ml-1">
+            {/* Giá nhập */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: '800', color: '#4b5563', textTransform: 'uppercase', marginLeft: '0.25rem' }}>
                 Giá nhập
               </label>
               <input
                 type="number"
-                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl font-semibold text-gray-800 focus:border-amber-500 outline-none transition-all"
+                style={{ 
+                  width: '100%', 
+                  padding: '0.75rem 1rem', 
+                  backgroundColor: '#f9fafb', 
+                  border: '2px solid #e5e7eb', 
+                  borderRadius: '0.75rem', 
+                  fontWeight: '700', 
+                  color: '#111827', 
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
                 value={form.price}
                 onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
               />
             </div>
           </div>
 
-          {/* NÚT LƯU: Ép màu Cam bằng style inline để không bị trắng trơn */}
+          {/* Ngưỡng tối thiểu */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: '800', color: '#4b5563', textTransform: 'uppercase', marginLeft: '0.25rem' }}>
+              Số lượng tối thiểu (Cảnh báo)
+            </label>
+            <input
+              type="number"
+              style={{ 
+                width: '100%', 
+                padding: '0.75rem 1rem', 
+                backgroundColor: '#f9fafb', 
+                border: '2px solid #e5e7eb', 
+                borderRadius: '0.75rem', 
+                fontWeight: '700', 
+                color: '#111827', 
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
+              value={form.min_quantity}
+              onChange={(e) => setForm({ ...form, min_quantity: Number(e.target.value) })}
+            />
+          </div>
+
+          {/* NÚT LƯU */}
           <button
             type="submit"
             disabled={loading}
-            style={{ backgroundColor: '#f59e0b' }}
-            className="w-full py-4 text-white rounded-xl font-bold uppercase tracking-wider shadow-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            style={{ 
+              width: '100%', 
+              padding: '1rem', 
+              backgroundColor: '#f59e0b', 
+              color: '#ffffff', 
+              border: 'none', 
+              borderRadius: '0.75rem', 
+              fontWeight: '900', 
+              textTransform: 'uppercase', 
+              letterSpacing: '0.1em', 
+              cursor: loading ? 'not-allowed' : 'pointer',
+              boxShadow: '0 10px 15px -3px rgba(245, 158, 11, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              transition: 'all 0.2s',
+              opacity: loading ? 0.7 : 1
+            }}
           >
             {loading ? (
               <>
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 style={{ width: '1.25rem', height: '1.25rem' }} className="animate-spin" />
                 <span>Đang lưu...</span>
               </>
             ) : (
               <>
-                <Save className="w-5 h-5" />
+                <Save style={{ width: '1.25rem', height: '1.25rem' }} />
                 <span>Lưu Thay Đổi</span>
               </>
             )}

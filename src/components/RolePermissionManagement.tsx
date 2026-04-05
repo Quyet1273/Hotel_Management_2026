@@ -204,7 +204,7 @@ export function RolePermissionManagement() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">
-            Quản Lý Phân Quyền
+            Quản Lý Nhân Viên & Phân Quyền
           </h2>
           <p className="text-gray-600 mt-1">
             Quản lý vai trò và quyền truy cập hệ thống

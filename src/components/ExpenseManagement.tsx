@@ -1,14 +1,7 @@
 import { useState, useEffect } from "react";
 import {
-  Receipt,
-  Search,
-  Filter,
-  TrendingDown,
-  Calendar,
-  CreditCard,
-  Wallet,
-  ArrowDownRight,
-  Loader2,
+  Receipt, Search, TrendingDown, Calendar, CreditCard,
+  Wallet, ArrowDownRight, Loader2,
 } from "lucide-react";
 import { expenseService } from "../services/expenseService";
 
@@ -34,194 +27,186 @@ export function ExpenseManagement() {
       currency: "VND",
     }).format(amount || 0);
 
-  // Tính toán thống kê
   const stats = {
-    total: expenses.reduce((sum, e) => sum + e.amount, 0),
+    total: expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0),
     thisMonth: expenses
-      .filter(
-        (e) => new Date(e.created_at).getMonth() === new Date().getMonth(),
-      )
-      .reduce((sum, e) => sum + e.amount, 0),
-    cash: expenses
-      .filter((e) => e.payment_method === "cash")
-      .reduce((sum, e) => sum + e.amount, 0),
-    transfer: expenses
-      .filter((e) => e.payment_method === "transfer")
-      .reduce((sum, e) => sum + e.amount, 0),
+      .filter((e) => {
+        const d = new Date(e.created_at);
+        const now = new Date();
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      })
+      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0),
+    cash: expenses.filter((e) => e.payment_method === "cash").reduce((sum, e) => sum + (Number(e.amount) || 0), 0),
+    transfer: expenses.filter((e) => e.payment_method === "transfer").reduce((sum, e) => sum + (Number(e.amount) || 0), 0),
   };
 
   if (loading)
     return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="w-10 h-10 text-rose-600 animate-spin" />
+      <div style={{ display: "flex", justifyContent: "center", paddingTop: "5rem" }}>
+        <Loader2 style={{ width: "2.5rem", height: "2.5rem", color: "#e11d48" }} className="animate-spin" />
       </div>
     );
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-10">
-      {/* HEADER - Dùng màu Rose/Red cho phần Chi phí để phân biệt với màu Blue của Kho */}
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", paddingBottom: "2.5rem" }}>
+      
+      {/* HEADER - Đỏ trắng rõ ràng */}
       <div
-        style={{ backgroundColor: "#e11d48" }} // Đây là mã màu tương đương bg-rose-600
-        className="rounded-[2rem] shadow-xl p-8 text-white flex flex-col md:flex-row md:items-center justify-between gap-6 overflow-hidden relative"
+        style={{ 
+          backgroundColor: "#e11d48", 
+          borderRadius: "2rem", 
+          padding: "2rem", 
+          color: "#ffffff", 
+          display: "flex", 
+          justifyContent: "space-between", 
+          alignItems: "center",
+          position: "relative",
+          overflow: "hidden",
+          boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)"
+        }}
       >
-        <div className="flex items-center gap-5 relative z-10">
-          <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-inner">
-            <Receipt className="w-8 h-8 text-white" />
+        <div style={{ display: "flex", alignItems: "center", gap: "1.25rem", position: "relative", zIndex: 10 }}>
+          <div style={{ width: "4rem", height: "4rem", backgroundColor: "rgba(255, 255, 255, 0.2)", borderRadius: "1rem", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Receipt style={{ width: "2rem", height: "2rem", color: "#ffffff" }} />
           </div>
           <div>
-            <h1 className="text-3xl font-black tracking-tight mb-1 text-white">
-              Quản Lý Chi Phí
-            </h1>
-            <p className="text-white/80 text-sm font-medium">
-              Theo dõi dòng tiền chi ra của HotelPro
-            </p>
+            <h1 style={{ fontSize: "1.875rem", fontWeight: "900", margin: 0, letterSpacing: "-0.025em" }}>QUẢN LÝ CHI PHÍ</h1>
+            <p style={{ color: "rgba(255, 255, 255, 0.8)", margin: 0, fontSize: "0.875rem" }}>Theo dõi dòng tiền chi ra của HotelPro</p>
           </div>
         </div>
-
-        {/* Đồ họa trang trí cho Pro (tùy chọn) */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl" />
       </div>
 
-      {/* STATS CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* STATS CARDS - ĐÃ FIX MÀU CHỮ TRÙNG NỀN */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
         <StatCard
           icon={<TrendingDown />}
-          label="Tổng chi"
+          label="TỔNG CHI"
           value={formatCurrency(stats.total)}
-          color="rose"
+          iconColor="#e11d48"
+          bgColor="#fff1f2"
         />
         <StatCard
           icon={<Calendar />}
-          label="Chi tháng này"
+          label="CHI THÁNG NÀY"
           value={formatCurrency(stats.thisMonth)}
-          color="orange"
+          iconColor="#ea580c"
+          bgColor="#fff7ed"
         />
         <StatCard
           icon={<Wallet />}
-          label="Tiền mặt"
+          label="TIỀN MẶT"
           value={formatCurrency(stats.cash)}
-          color="emerald"
+          iconColor="#059669"
+          bgColor="#ecfdf5"
         />
         <StatCard
           icon={<CreditCard />}
-          label="Chuyển khoản"
+          label="CHUYỂN KHOẢN"
           value={formatCurrency(stats.transfer)}
-          color="blue"
+          iconColor="#2563eb"
+          bgColor="#eff6ff"
         />
       </div>
 
-      {/* TABLE */}
-      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-gray-50 flex flex-col md:flex-row gap-4 bg-gray-50/30">
-          <div className="relative flex-1">
-            <Search className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
+      {/* TABLE SECTION */}
+      <div style={{ backgroundColor: "#ffffff", borderRadius: "2rem", border: "1px solid #f3f4f6", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+        <div style={{ padding: "1rem", backgroundColor: "rgba(249, 250, 251, 0.5)", borderBottom: "1px solid #f3f4f6" }}>
+          <div style={{ position: "relative", maxWidth: "400px" }}>
+            <Search style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", width: "1.25rem", height: "1.25rem", color: "#9ca3af" }} />
             <input
               type="text"
               placeholder="Tìm kiếm nội dung chi..."
-              className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-2xl outline-none focus:border-rose-500 transition-all"
+              style={{ width: "100%", padding: "0.75rem 1rem 0.75rem 3rem", borderRadius: "1rem", border: "1px solid #e5e7eb", outline: "none" }}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 border-b text-[10px] text-slate-400 font-black uppercase tracking-widest">
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", textAlign: "left", borderCollapse: "collapse" }}>
+            <thead style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
               <tr>
-                <th className="p-5 pl-8">Thời gian</th>
-                <th className="p-5">Nội dung chi phí</th>
-                <th className="p-5">Danh mục</th>
-                <th className="p-5">Hình thức</th>
-                <th className="p-5 text-right pr-8">Số tiền</th>
+                <th style={{ padding: "1.25rem", fontSize: "0.75rem", fontWeight: "900", color: "#64748b", textTransform: "uppercase" }}>Thời gian</th>
+                <th style={{ padding: "1.25rem", fontSize: "0.75rem", fontWeight: "900", color: "#64748b", textTransform: "uppercase" }}>Nội dung chi phí</th>
+                <th style={{ padding: "1.25rem", fontSize: "0.75rem", fontWeight: "900", color: "#64748b", textTransform: "uppercase" }}>Danh mục</th>
+                <th style={{ padding: "1.25rem", fontSize: "0.75rem", fontWeight: "900", color: "#64748b", textTransform: "uppercase" }}>Hình thức</th>
+                <th style={{ padding: "1.25rem", fontSize: "0.75rem", fontWeight: "900", color: "#64748b", textTransform: "uppercase", textAlign: "right" }}>Số tiền</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody>
               {expenses
-                .filter((e) =>
-                  e.description
-                    .toLowerCase()
-                    .includes(searchTerm.toLowerCase()),
-                )
+                .filter((e) => (e.description || "").toLowerCase().includes(searchTerm.toLowerCase()))
                 .map((exp) => (
-                  <tr
-                    key={exp.id}
-                    className="hover:bg-rose-50/30 transition-colors group"
-                  >
-                    <td className="p-5 pl-8">
-                      <div className="text-sm font-bold text-gray-900">
-                        {new Date(exp.created_at).toLocaleDateString("vi-VN")}
-                      </div>
-                      <div className="text-[10px] text-gray-400">
-                        {new Date(exp.created_at).toLocaleTimeString("vi-VN")}
-                      </div>
+                  <tr key={exp.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                    <td style={{ padding: "1.25rem" }}>
+                      <div style={{ fontSize: "0.875rem", fontWeight: "700", color: "#111827" }}>{new Date(exp.created_at).toLocaleDateString("vi-VN")}</div>
+                      <div style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{new Date(exp.created_at).toLocaleTimeString("vi-VN")}</div>
                     </td>
-                    <td className="p-5">
-                      <div className="font-bold text-gray-800 text-sm flex items-center gap-2">
-                        <ArrowDownRight className="w-4 h-4 text-rose-500" />
+                    <td style={{ padding: "1.25rem", fontSize: "0.875rem", fontWeight: "700", color: "#1f2937" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <ArrowDownRight style={{ width: "1rem", height: "1rem", color: "#e11d48" }} />
                         {exp.description}
                       </div>
                     </td>
-                    <td className="p-5">
-                      <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-200">
-                        {exp.category === "inventory"
-                          ? "Nhập kho"
-                          : exp.category}
+                    <td style={{ padding: "1.25rem" }}>
+                      <span style={{ padding: "0.25rem 0.75rem", backgroundColor: "#f3f4f6", color: "#4b5563", borderRadius: "0.5rem", fontSize: "0.75rem", fontWeight: "900" }}>
+                        {exp.category === "inventory" ? "NHẬP KHO" : exp.category}
                       </span>
                     </td>
-                    <td className="p-5">
-                      <div className="flex items-center gap-2 text-xs font-bold text-gray-600">
-                        {exp.payment_method === "cash" ? (
-                          <Wallet size={14} className="text-emerald-500" />
-                        ) : (
-                          <CreditCard size={14} className="text-blue-500" />
-                        )}
-                        {exp.payment_method === "cash"
-                          ? "Tiền mặt"
-                          : "Chuyển khoản"}
-                      </div>
+                    <td style={{ padding: "1.25rem", fontSize: "0.75rem", fontWeight: "700", color: "#4b5563" }}>
+                      {exp.payment_method === "cash" ? "💵 Tiền mặt" : "💳 Chuyển khoản"}
                     </td>
-                    <td className="p-5 text-right pr-8">
-                      <span className="text-base font-black text-rose-600">
-                        {formatCurrency(exp.amount)}
-                      </span>
+                    <td style={{ padding: "1.25rem", textAlign: "right", fontSize: "1rem", fontWeight: "900", color: "#e11d48" }}>
+                      {formatCurrency(exp.amount)}
                     </td>
                   </tr>
                 ))}
             </tbody>
           </table>
-          {expenses.length === 0 && (
-            <div className="p-20 text-center text-gray-400 font-bold uppercase tracking-widest text-sm">
-              Chưa có dữ liệu hóa đơn chi.
-            </div>
-          )}
         </div>
       </div>
     </div>
   );
 }
 
-// Sub-components giống hệt bên Inventory để đồng bộ giao diện
-function StatCard({ icon, label, value, color }: any) {
-  const colors: any = {
-    rose: "bg-rose-50 text-rose-600 border-rose-100",
-    orange: "bg-orange-50 text-orange-600 border-orange-100",
-    emerald: "bg-emerald-50 text-emerald-600 border-emerald-100",
-    blue: "bg-blue-50 text-blue-600 border-blue-100",
-  };
+// FIX TRỰC TIẾP MÀU CHỮ Ở ĐÂY
+function StatCard({ icon, label, value, iconColor, bgColor }: any) {
   return (
-    <div
-      className={`bg-white rounded-3xl p-6 border ${colors[color]} shadow-sm`}
-    >
-      <div className="flex justify-between items-start mb-4">
-        <div
-          className={`w-12 h-12 rounded-2xl flex items-center justify-center ${colors[color].replace("border-", "bg-").split(" ")[0]}`}
-        >
+    <div style={{ 
+      backgroundColor: "#ffffff", 
+      borderRadius: "1.5rem", 
+      padding: "1.5rem", 
+      border: "1px solid #f3f4f6", 
+      boxShadow: "0 1px 2px rgba(0,0,0,0.05)" 
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
+        <div style={{ 
+          width: "3rem", 
+          height: "3rem", 
+          borderRadius: "1rem", 
+          display: "flex", 
+          alignItems: "center", 
+          justifyContent: "center", 
+          backgroundColor: bgColor, 
+          color: iconColor 
+        }}>
           {icon}
         </div>
-        <span className="text-xl font-black">{value}</span>
+        {/* BUỘC GIÁ TRỊ PHẢI LÀ MÀU ĐEN/XÁM ĐẬM */}
+        <span style={{ fontSize: "1.25rem", fontWeight: "900", color: "#111827" }}>
+          {value}
+        </span>
       </div>
-      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+      {/* BUỘC NHÃN PHẢI LÀ MÀU XÁM RÕ RÀNG */}
+      <p style={{ 
+        fontSize: "0.75rem", 
+        fontWeight: "800", 
+        color: "#4b5563", 
+        margin: 0, 
+        textTransform: "uppercase", 
+        letterSpacing: "0.05em" 
+      }}>
         {label}
       </p>
     </div>
