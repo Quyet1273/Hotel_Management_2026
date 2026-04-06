@@ -243,5 +243,27 @@ export const payrollService = {
     } catch (error: any) {
       return { success: false, error: error.message };
     }
+  },
+  getPayrollByRange: async (startDate: string, endDate: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('employees')
+      .select(`
+        id,
+        fullName,
+        roles (name, base_salary, diligence_bonus),
+        attendance (work_date, check_in, check_out, late_minutes, early_minutes)
+      `)
+      // Lọc các ngày chấm công nằm trong khoảng 26 -> 25
+      .gte('attendance.work_date', startDate)
+      .lte('attendance.work_date', endDate);
+
+    if (error) throw error;
+    
+    // Logic tính toán lương dựa trên data trả về...
+    return { success: true, data: data }; 
+  } catch (error: any) {
+    return { success: false, error: error.message };
   }
+},
 };

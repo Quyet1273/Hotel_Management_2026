@@ -20,7 +20,6 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
 
-    /* Alias - Tuyệt đối không để baseUrl ở đây */
     "paths": {
       "@/*": ["./src/*"]
     },

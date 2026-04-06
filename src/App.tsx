@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 // Components
 import { Dashboard } from "./components/Dashboard.js";
 import { RoomManagement } from "./components/RoomManagement.js";
@@ -18,7 +18,6 @@ import { InventoryManagement } from "./components/InventoryManagement.tsx";
 import { ExpenseManagement } from "./components/ExpenseManagement.tsx";
 import { PayrollManagement } from "./components/PayrollManagement.tsx";
 import { ReportDashboard } from "./components/ReportDashboard.tsx";
-
 // Context & API
 import { SettingsProvider, useSettings } from "./context/SettingsContext.tsx";
 import { authService } from "./services/authService.ts";
@@ -35,6 +34,7 @@ import { Toaster } from "./components/ui/sonner.js";
 type UserRole = "admin" | "manager" | "receptionist" | "housekeeping" | "staff";
 
 interface User {
+  id: string;
   name: string;
   email: string;
   avatar: string;
@@ -44,13 +44,11 @@ interface User {
 }
 
 type Tab =
-  | "dashboard" | "rooms" | "bookings" | "guests" | "checkinout"
-  | "services" | "employees" | "housekeeping" | "invoices"
-  | "inventory" | "expenses" | "payroll" | "settings"
-  | "report" | "profile" | "roles";
+  | "dashboard" | "rooms" | "bookings" | "guests" | "checkinout" | "services"
+  | "employees" | "housekeeping" | "invoices" | "inventory" | "expenses"
+  | "payroll" | "settings" | "report" | "profile" | "roles" | "login" | "register";
 
 // --- ROOT APP COMPONENT ---
-// Bọc SettingsProvider ở đây để toàn bộ các component con (trong AppContent) có thể dùng useSettings
 export default function App() {
   return (
     <SettingsProvider>
@@ -62,40 +60,51 @@ export default function App() {
 
 // --- MAIN CONTENT COMPONENT ---
 function AppContent() {
-  // Lấy cấu hình theme từ Context
-  const { settings } = useSettings();
+  const { settings, t, loading: settingsLoading } = useSettings();
 
-  // Logic States
+  // Logic States (Giữ nguyên của ông)
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showLogin, setShowLogin] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true); 
 
-  const [currentUser, setCurrentUser] = useState<User>({
-    name: "Nguyễn Văn A",
-    email: "admin@hotel.com",
-    avatar: "https://images.unsplash.com/photo-1655249481446-25d575f1c054?q=80&w=1080",
-    role: "admin",
-  });
+  useEffect(() => {
+    const loadUser = async () => {
+      setIsLoading(true);
+      const user = await authService.getCurrentUser();
+      if (user) {
+        setCurrentUser(user as User);
+        setIsAuthenticated(true); // Quan trọng: Có user thì set true để không bị nhảy trang Login
+      } else {
+        setActiveTab("login");
+        setIsAuthenticated(false);
+      }
+      setIsLoading(false);
+    };
+    loadUser();
+  }, []);
 
-  // Logic Xử lý Đăng nhập
   const handleLogin = async (email: string, password: string) => {
     const result = await authService.login(email, password);
     if (result.success && result.user) {
       setIsAuthenticated(true);
       setCurrentUser(result.user as User);
+      setActiveTab("dashboard"); // Chuyển về dashboard sau login
     } else {
       alert("Đăng nhập thất bại: " + result.error);
     }
   };
 
-  // Logic Xử lý Đăng ký
+  // Logic Xử lý Đăng ký (Y hệt bản gốc)
   const handleRegister = async (formData: any) => {
     try {
       const result = await authService.register(formData);
       if (result.success) {
         setIsAuthenticated(true);
         setCurrentUser({
+          id: "", 
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
@@ -104,6 +113,7 @@ function AppContent() {
           role: "receptionist",
         });
         alert("Đăng ký tài khoản thành công!");
+        setActiveTab("dashboard");
       } else {
         alert("Lỗi đăng ký: " + result.error);
       }
@@ -116,75 +126,79 @@ function AppContent() {
   const handleLogout = () => {
     setIsAuthenticated(false);
     setShowLogin(true);
-    setActiveTab("dashboard");
+    setActiveTab("login");
+    setCurrentUser(null);
   };
 
-  // Logic Phân quyền Menu
+  // Logic Phân quyền Menu (Đã bọc t())
   const getMenuTabs = () => {
     const allTabs = [
-      { id: "dashboard" as Tab, label: "Tổng Quan", icon: Hotel, roles: ["admin", "manager", "receptionist", "staff"] },
-      { id: "bookings" as Tab, label: "Đặt Phòng", icon: Calendar, roles: ["admin", "manager", "receptionist", "staff"] },
-      { id: "guests" as Tab, label: "Khách Hàng", icon: Users, roles: ["admin", "manager", "receptionist", "staff"] },
-      { id: "checkinout" as Tab, label: "Quầy Lễ Tân", icon: LogIn, roles: ["admin", "manager", "receptionist", "staff"] },
-      { id: "services" as Tab, label: "Dịch Vụ", icon: Sparkles, roles: ["admin", "manager", "receptionist", "staff"] },
-      { id: "employees" as Tab, label: "Nhân Viên", icon: UsersIcon, roles: ["admin", "manager", "receptionist", "staff"] },
-      { id: "invoices" as Tab, label: "Hóa Đơn", icon: ReceiptText, roles: ["admin", "manager", "receptionist", "staff"] },
-      { id: "inventory" as Tab, label: "Kho Vật Tư", icon: Package, roles: ["admin", "manager", "receptionist", "staff"] },
-      { id: "expenses" as Tab, label: "Chi Phí", icon: Receipt, roles: ["admin", "manager"] },
-      { id: "payroll" as Tab, label: " Bảng Lương", icon: CircleDollarSign, roles: ["admin", "manager"] },
-      { id: "rooms" as Tab, label: "Phòng", icon: Bed, roles: ["admin", "manager", "receptionist", "staff"] },
-      { id: "report" as Tab, label: "Báo Cáo", icon: Box, roles: ["admin", "manager"] }
+      { id: "dashboard" as Tab, label: t('sidebar.dashboard'), icon: Hotel, roles: ["admin", "manager", "receptionist", "staff"] },
+      { id: "bookings" as Tab, label: t('sidebar.booking'), icon: Calendar, roles: ["admin", "manager", "receptionist", "staff"] },
+      { id: "guests" as Tab, label: t('sidebar.customer'), icon: Users, roles: ["admin", "manager", "receptionist", "staff"] },
+      { id: "checkinout" as Tab, label: t('sidebar.reception'), icon: LogIn, roles: ["admin", "manager", "receptionist", "staff"] },
+      { id: "services" as Tab, label: t('sidebar.service'), icon: Sparkles, roles: ["admin", "manager", "receptionist", "staff"] },
+      { id: "employees" as Tab, label: t('sidebar.employee'), icon: UsersIcon, roles: ["admin", "manager", "receptionist", "staff"] },
+      { id: "invoices" as Tab, label: t('sidebar.invoice'), icon: ReceiptText, roles: ["admin", "manager", "receptionist", "staff"] },
+      { id: "inventory" as Tab, label: t('sidebar.inventory'), icon: Package, roles: ["admin", "manager", "receptionist", "staff"] },
+      { id: "expenses" as Tab, label: t('sidebar.cost'), icon: Receipt, roles: ["admin", "manager"] },
+      { id: "rooms" as Tab, label: t('sidebar.room'), icon: Bed, roles: ["admin", "manager", "receptionist", "staff"] },
+      { id: "report" as Tab, label: t('sidebar.report'), icon: Box, roles: ["admin", "manager"] },
     ];
-    return allTabs.filter((tab) => tab.roles.includes(currentUser.role));
+    return allTabs.filter((tab) => tab.roles.includes(currentUser?.role || ""));
   };
 
   const mainMenuTabs = getMenuTabs();
   const bottomMenuTabs = [
-    { id: "profile" as Tab, label: "Hồ Sơ", icon: UserCircle },
-    { id: "settings" as Tab, label: "Cài Đặt", icon: SettingsIcon },
+    { id: "profile" as Tab, label: t('sidebar.profile'), icon: UserCircle },
+    { id: "settings" as Tab, label: t('sidebar.settings'), icon: SettingsIcon },
   ];
 
-  // Giao diện khi chưa đăng nhập
-  if (!isAuthenticated) {
-    if (showLogin) {
-      return <Login onLogin={handleLogin} onSwitchToRegister={() => setShowLogin(false)} />;
-    } else {
-      return <Register onRegister={handleRegister} onSwitchToLogin={() => setShowLogin(true)} />;
-    }
+  // --- GATEKEEPER: CHẶN NHẢY TRANG ---
+  if (isLoading || settingsLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+      </div>
+    );
   }
 
+  if (!isAuthenticated) {
+    return showLogin ? (
+      <Login onLogin={handleLogin} onSwitchToRegister={() => setShowLogin(false)} />
+    ) : (
+      <Register onRegister={handleRegister} onSwitchToLogin={() => setShowLogin(true)} />
+    );
+  }
+
+  const themeColors: Record<string, string> = {
+    blue: "from-blue-600 to-blue-700 shadow-blue-600/30",
+    purple: "from-purple-600 to-purple-700 shadow-purple-600/30",
+    green: "from-green-600 to-green-700 shadow-green-600/30",
+    red: "from-red-600 to-red-700 shadow-red-600/30",
+    orange: "from-orange-500 to-orange-600 shadow-orange-500/30",
+  };
+
   return (
-    <div className={`flex h-screen transition-colors duration-300 ${
-      settings.theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-50'
-    } overflow-hidden`}>
-      
-      {/* Sidebar */}
-      <aside
-        className={`${isSidebarOpen ? "w-72" : "w-20"} 
-        ${settings.theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-[#D1F4FA] border-gray-200/50'} 
-        border-r shadow-xl transition-all duration-300 flex flex-col`}
-      >
+    <div className={`flex h-screen transition-colors duration-300 ${settings.theme === "dark" ? "bg-gray-900 text-white" : "bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-50"} overflow-hidden`}>
+      <aside className={`${isSidebarOpen ? "w-72" : "w-20"} bg-[#D1F4FA] dark:bg-gray-900 border-r border-gray-200/50 dark:border-gray-800 shadow-xl transition-all duration-300 flex flex-col`}>
         <div className="p-6 border-b border-gray-200/50">
           <div className="flex items-center justify-between">
             {isSidebarOpen ? (
               <>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20">
+                  <div className={`w-10 h-10 bg-gradient-to-br ${themeColors[settings.primaryColor] || themeColors.blue} rounded-xl flex items-center justify-center shadow-lg`}>
                     <Hotel className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h1 className={`text-lg font-bold ${settings.theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>HotelPro</h1>
-                    <p className="text-xs text-gray-500">Quản lý khách sạn</p>
+                    <h1 className={`text-lg font-bold ${settings.theme === "dark" ? "text-white" : "text-gray-900"}`}>HotelPro</h1>
+                    <p className="text-xs text-gray-500">{t('')}</p>
                   </div>
                 </div>
-                <button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors">
-                  <X className="w-5 h-5" />
-                </button>
+                <button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"><X className="w-5 h-5" /></button>
               </>
             ) : (
-              <button onClick={() => setIsSidebarOpen(true)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors mx-auto">
-                <Menu className="w-5 h-5" />
-              </button>
+              <button onClick={() => setIsSidebarOpen(true)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors mx-auto"><Menu className="w-5 h-5" /></button>
             )}
           </div>
         </div>
@@ -197,12 +211,7 @@ function AppContent() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                    activeTab === tab.id
-                      ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-600/30"
-                      : `${settings.theme === 'dark' ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'}`
-                  }`}
-                  title={!isSidebarOpen ? tab.label : ""}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${activeTab === tab.id ? `bg-gradient-to-r ${themeColors[settings.primaryColor] || themeColors.blue} text-white shadow-lg` : `${settings.theme === "dark" ? "text-gray-400 hover:bg-gray-700" : "text-gray-700 hover:bg-gray-100"}`}`}
                 >
                   <Icon className="w-5 h-5 flex-shrink-0" />
                   {isSidebarOpen && <span className="font-medium">{tab.label}</span>}
@@ -220,11 +229,7 @@ function AppContent() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                    activeTab === tab.id
-                      ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-600/30"
-                      : `${settings.theme === 'dark' ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'}`
-                  }`}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${activeTab === tab.id ? `bg-gradient-to-r ${themeColors[settings.primaryColor] || themeColors.blue} text-white shadow-lg` : `${settings.theme === "dark" ? "text-gray-400 hover:bg-gray-700" : "text-gray-700 hover:bg-gray-100"}`}`}
                 >
                   <Icon className="w-5 h-5 flex-shrink-0" />
                   {isSidebarOpen && <span className="font-medium">{tab.label}</span>}
@@ -234,34 +239,24 @@ function AppContent() {
           </div>
 
           {isSidebarOpen && (
-            <div className={`p-4 rounded-xl border transition-colors ${
-              settings.theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white/60 border-blue-100 backdrop-blur-sm'
-            }`}>
+            <div className={`p-4 rounded-xl border transition-colors ${settings.theme === "dark" ? "bg-gray-700 border-gray-600" : "bg-white/60 border-blue-100 backdrop-blur-sm"}`}>
               <div className="flex items-center gap-3 mb-3">
-                {currentUser.avatar ? (
-                  <img src={currentUser.avatar} alt={currentUser.name} className="w-10 h-10 rounded-full object-cover border-2 border-blue-200 shadow-md" />
-                ) : (
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-full flex items-center justify-center text-white font-semibold">
-                    {currentUser.name.charAt(0)}
-                  </div>
-                )}
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-full flex items-center justify-center text-white font-semibold">
+                  {currentUser?.name.charAt(0)}
+                </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate">{currentUser.name}</p>
-                  <p className="text-xs text-gray-500 truncate">{currentUser.email}</p>
+                  <p className="text-sm font-semibold truncate">{currentUser?.name}</p>
+                  <p className="text-xs text-gray-500 truncate">{currentUser?.email}</p>
                 </div>
               </div>
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-sm font-medium border border-red-200 dark:border-red-800"
-              >
-                <LogOut className="w-4 h-4" /> Đăng xuất
+              <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-sm font-medium border border-red-200 dark:border-red-800">
+                <LogOut className="w-4 h-4" /> {t('sidebar.logout')}
               </button>
             </div>
           )}
         </div>
       </aside>
 
-      {/* Main Content Area */}
       <main className="flex-1 overflow-auto">
         <div className="p-8">
           <div className="max-w-7xl mx-auto">
@@ -276,15 +271,9 @@ function AppContent() {
             {activeTab === "invoices" && <InvoiceManagement />}
             {activeTab === "inventory" && <InventoryManagement />}
             {activeTab === "expenses" && <ExpenseManagement />}
-            {activeTab === "payroll" && <PayrollManagement />}
             {activeTab === "report" && <ReportDashboard />}
             {activeTab === "settings" && <Settings />}
-            {activeTab === "profile" && (
-              <Profile
-                user={currentUser}
-                onUpdateUser={(user) => setCurrentUser({ ...user, role: currentUser.role })}
-              />
-            )}
+            {activeTab === "profile" && currentUser && <Profile />}
             {activeTab === "roles" && <RolePermissionManagement />}
           </div>
         </div>

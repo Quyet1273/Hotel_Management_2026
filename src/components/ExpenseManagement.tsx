@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Receipt, Search, TrendingDown, Calendar, CreditCard,
-  Wallet, ArrowDownRight, Loader2,
+  Wallet, ArrowDownRight, Loader2, Download // Thêm icon Download
 } from "lucide-react";
 import { expenseService } from "../services/expenseService";
+import * as XLSX from "xlsx"; // Import thư viện Excel
 
 export function ExpenseManagement() {
   const [expenses, setExpenses] = useState<any[]>([]);
@@ -26,6 +27,38 @@ export function ExpenseManagement() {
       style: "currency",
       currency: "VND",
     }).format(amount || 0);
+
+  // Logic lọc dữ liệu dùng chung cho cả bảng và Excel
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter((e) =>
+      (e.description || "").toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [expenses, searchTerm]);
+
+  // --- CHỨC NĂNG XUẤT EXCEL ---
+  const handleExportExcel = () => {
+    if (filteredExpenses.length === 0) {
+      alert("Không có dữ liệu để xuất!");
+      return;
+    }
+
+    const dataToExport = filteredExpenses.map((exp) => ({
+      "Thời Gian": new Date(exp.created_at).toLocaleString("vi-VN"),
+      "Nội Dung Chi Phí": exp.description,
+      "Danh Mục": exp.category === "inventory" ? "NHẬP KHO" : exp.category,
+      "Hình Thức": exp.payment_method === "cash" ? "Tiền mặt" : "Chuyển khoản",
+      "Số Tiền": Number(exp.amount) || 0,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Chi_Phi");
+
+    // Căn độ rộng cột cho đẹp
+    worksheet["!cols"] = [{ wch: 20 }, { wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
+
+    XLSX.writeFile(workbook, `Bao_Cao_Chi_Phi_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
+  };
 
   const stats = {
     total: expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0),
@@ -50,7 +83,7 @@ export function ExpenseManagement() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", paddingBottom: "2.5rem" }}>
       
-      {/* HEADER - Đỏ trắng rõ ràng */}
+      {/* HEADER - Đã thêm nút Xuất Excel */}
       <div
         style={{ 
           backgroundColor: "#e11d48", 
@@ -74,9 +107,22 @@ export function ExpenseManagement() {
             <p style={{ color: "rgba(255, 255, 255, 0.8)", margin: 0, fontSize: "0.875rem" }}>Theo dõi dòng tiền chi ra của HotelPro</p>
           </div>
         </div>
+
+        {/* Nút Xuất Excel mới thêm */}
+        <button 
+          onClick={handleExportExcel}
+          style={{ 
+            backgroundColor: "#ffffff", color: "#e11d48", padding: "0.8rem 1.5rem", 
+            borderRadius: "1.25rem", border: "none", fontWeight: "900", cursor: "pointer",
+            display: "flex", alignItems: "center", gap: "0.6rem", boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+            zIndex: 20, fontSize: "0.85rem", textTransform: "uppercase"
+          }}
+        >
+          <Download size={18} /> Xuất File Excel
+        </button>
       </div>
 
-      {/* STATS CARDS - ĐÃ FIX MÀU CHỮ TRÙNG NỀN */}
+      {/* STATS CARDS */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
         <StatCard
           icon={<TrendingDown />}
@@ -135,33 +181,31 @@ export function ExpenseManagement() {
               </tr>
             </thead>
             <tbody>
-              {expenses
-                .filter((e) => (e.description || "").toLowerCase().includes(searchTerm.toLowerCase()))
-                .map((exp) => (
-                  <tr key={exp.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                    <td style={{ padding: "1.25rem" }}>
-                      <div style={{ fontSize: "0.875rem", fontWeight: "700", color: "#111827" }}>{new Date(exp.created_at).toLocaleDateString("vi-VN")}</div>
-                      <div style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{new Date(exp.created_at).toLocaleTimeString("vi-VN")}</div>
-                    </td>
-                    <td style={{ padding: "1.25rem", fontSize: "0.875rem", fontWeight: "700", color: "#1f2937" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        <ArrowDownRight style={{ width: "1rem", height: "1rem", color: "#e11d48" }} />
-                        {exp.description}
-                      </div>
-                    </td>
-                    <td style={{ padding: "1.25rem" }}>
-                      <span style={{ padding: "0.25rem 0.75rem", backgroundColor: "#f3f4f6", color: "#4b5563", borderRadius: "0.5rem", fontSize: "0.75rem", fontWeight: "900" }}>
-                        {exp.category === "inventory" ? "NHẬP KHO" : exp.category}
-                      </span>
-                    </td>
-                    <td style={{ padding: "1.25rem", fontSize: "0.75rem", fontWeight: "700", color: "#4b5563" }}>
-                      {exp.payment_method === "cash" ? "💵 Tiền mặt" : "💳 Chuyển khoản"}
-                    </td>
-                    <td style={{ padding: "1.25rem", textAlign: "right", fontSize: "1rem", fontWeight: "900", color: "#e11d48" }}>
-                      {formatCurrency(exp.amount)}
-                    </td>
-                  </tr>
-                ))}
+              {filteredExpenses.map((exp) => (
+                <tr key={exp.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                  <td style={{ padding: "1.25rem" }}>
+                    <div style={{ fontSize: "0.875rem", fontWeight: "700", color: "#111827" }}>{new Date(exp.created_at).toLocaleDateString("vi-VN")}</div>
+                    <div style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{new Date(exp.created_at).toLocaleTimeString("vi-VN")}</div>
+                  </td>
+                  <td style={{ padding: "1.25rem", fontSize: "0.875rem", fontWeight: "700", color: "#1f2937" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      <ArrowDownRight style={{ width: "1rem", height: "1rem", color: "#e11d48" }} />
+                      {exp.description}
+                    </div>
+                  </td>
+                  <td style={{ padding: "1.25rem" }}>
+                    <span style={{ padding: "0.25rem 0.75rem", backgroundColor: "#f3f4f6", color: "#4b5563", borderRadius: "0.5rem", fontSize: "0.75rem", fontWeight: "900" }}>
+                      {exp.category === "inventory" ? "NHẬP KHO" : exp.category}
+                    </span>
+                  </td>
+                  <td style={{ padding: "1.25rem", fontSize: "0.75rem", fontWeight: "700", color: "#4b5563" }}>
+                    {exp.payment_method === "cash" ? "💵 Tiền mặt" : "💳 Chuyển khoản"}
+                  </td>
+                  <td style={{ padding: "1.25rem", textAlign: "right", fontSize: "1rem", fontWeight: "900", color: "#e11d48" }}>
+                    {formatCurrency(exp.amount)}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -170,7 +214,6 @@ export function ExpenseManagement() {
   );
 }
 
-// FIX TRỰC TIẾP MÀU CHỮ Ở ĐÂY
 function StatCard({ icon, label, value, iconColor, bgColor }: any) {
   return (
     <div style={{ 
@@ -193,12 +236,10 @@ function StatCard({ icon, label, value, iconColor, bgColor }: any) {
         }}>
           {icon}
         </div>
-        {/* BUỘC GIÁ TRỊ PHẢI LÀ MÀU ĐEN/XÁM ĐẬM */}
         <span style={{ fontSize: "1.25rem", fontWeight: "900", color: "#111827" }}>
           {value}
         </span>
       </div>
-      {/* BUỘC NHÃN PHẢI LÀ MÀU XÁM RÕ RÀNG */}
       <p style={{ 
         fontSize: "0.75rem", 
         fontWeight: "800", 

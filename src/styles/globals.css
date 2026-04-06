@@ -1,3 +1,6 @@
+
+
+/* Các code cũ của bạn giữ nguyên ở bên dưới... */
 @custom-variant dark (&:is(.dark *));
 
 :root {

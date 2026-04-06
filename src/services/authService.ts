@@ -73,7 +73,76 @@ export const authService = {
       return { success: false, error: error.message };
     }
   },
+  // HÀM LẤY USER ĐANG ĐĂNG NHẬP (Dùng cho Profile và giữ Login)
+  getCurrentUser: async () => {
+    try {
+      // B1: Lấy session từ Auth
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      if (authError || !authUser) return null;
 
+      // B2: Lấy thông tin chi tiết từ bảng employees
+      const { data: userData, error: dbError } = await supabase
+        .from("employees")
+        .select("*, role_info:roles(name, description)") // Join luôn để lấy tên Role cho đẹp
+        .eq("id", authUser.id)
+        .single();
+
+      if (dbError) throw dbError;
+
+      return {
+        id: authUser.id, // Rất quan trọng để truyền vào Profile
+        name: userData.fullName,
+        email: userData.email,
+        avatar: userData.avatar_url || "",
+        role: userData.role,
+        phone: userData.phone,
+        address: userData.address,
+        position: userData.role_info?.name || "Nhân viên"
+      };
+    } catch (error) {
+      console.error("Get Current User Error:", error);
+      return null;
+    }
+  },
+  // Cập nhật thông tin cơ bản của Profile
+  updateProfile: async (userId: string, payload: { name: string; phone: string; address: string; avatar?: string }) => {
+    try {
+      const { error } = await supabase
+        .from('employees')
+        .update({
+          fullName: payload.name,
+          phone: payload.phone,
+          address: payload.address,
+          ...(payload.avatar && { avatar_url: payload.avatar }) // Chỉ cập nhật avatar nếu có
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (error: any) {
+      console.error("Update Profile Error:", error.message);
+      return { success: false, error: error.message };
+    }
+  },
+  // hàm cập nhật avatar mới (Dùng cho Profile)
+uploadAvatar: async (userId: string, file: File) => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${userId}-${Math.random()}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      return { success: true, url: data.publicUrl };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
   // HÀM ĐĂNG XUẤT
   logout: async () => {
     await supabase.auth.signOut();

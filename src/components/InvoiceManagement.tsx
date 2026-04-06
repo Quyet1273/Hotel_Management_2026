@@ -61,7 +61,7 @@ export function InvoiceManagement() {
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "DanhSachHoaDon");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Chi_phi");
 
     // Định dạng độ rộng cột
     worksheet["!cols"] = [
@@ -131,7 +131,9 @@ export function InvoiceManagement() {
               value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          
         </div>
+
 
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", textAlign: "left", borderCollapse: "collapse" }}>

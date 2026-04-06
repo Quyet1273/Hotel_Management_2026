@@ -183,8 +183,7 @@ export function Login({ onLogin, onSwitchToRegister }: LoginProps) {
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-600/30 transition-all duration-200 hover:shadow-xl hover:scale-[1.02] font-medium"
-            >
+className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:text-purple-300 rounded-xl hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-600/30 transition-all duration-200 hover:shadow-xl hover:scale-[1.02] font-medium"            >
               Đăng nhập
             </button>
 
