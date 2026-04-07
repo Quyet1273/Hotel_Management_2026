@@ -101,92 +101,47 @@ export function BookingManagement() {
   };
 
   return (
-    <div className="space-y-6 pb-10">
-      {/* HEADER BANNER - CHUẨN STYLE KHO VẬT TƯ */}
-      <div
-        style={{
-          backgroundColor: "#2563eb",
-          borderRadius: "2rem",
-          padding: "2rem",
-          color: "#ffffff",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          boxShadow: "0 10px 15px rgba(0,0,0,0.1)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "1.25rem" }}>
-          <div
-            style={{
-              width: "4rem",
-              height: "4rem",
-              backgroundColor: "rgba(255, 255, 255, 0.2)",
-              borderRadius: "1.25rem",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <BookmarkCheck
-              style={{ width: "2rem", height: "2rem", color: "#ffffff" }}
-            />
+  <div className="space-y-6 pb-10 font-sans antialiased">
+      {/* HEADER BANNER - ĐỒNG BỘ NỀN VÀ FONT */}
+      <div className="bg-[#D1F4FA] dark:bg-gray-800 rounded-[2rem] p-8 flex flex-col md:flex-row gap-4 justify-between md:items-center shadow-sm border border-blue-100 dark:border-gray-700">
+        <div className="flex items-center gap-5">
+          <div className="w-16 h-16 bg-blue-600/10 dark:bg-white/10 rounded-2xl flex items-center justify-center">
+            <BookmarkCheck className="w-8 h-8 text-blue-700 dark:text-blue-400" />
           </div>
           <div>
-            <h1
-              style={{
-                fontSize: "1.875rem",
-                fontWeight: "900",
-                margin: 0,
-                textTransform: "uppercase",
-              }}
-            >
-              QUẢN LÝ ĐẶT PHÒNG
+            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">
+              Quản Lý Đặt Phòng
             </h1>
-            <p style={{ color: "rgba(255, 255, 255, 0.8)", margin: 0 }}>
-              Theo dõi lịch trình lưu trú và trạng thái phòng HotelPro
-            </p>
           </div>
         </div>
         <button
           onClick={() => setShowBookingForm(true)}
-          style={{
-            backgroundColor: "#ffffff",
-            color: "#2563eb",
-            padding: "0.8rem 1.5rem",
-            borderRadius: "1rem",
-            border: "none",
-            fontWeight: "900",
-            cursor: "pointer",
-            textTransform: "uppercase",
-            fontSize: "0.75rem",
-          }}
+          className="px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-extrabold text-[13px] uppercase tracking-wider shadow-lg shadow-blue-500/30 transition-all active:scale-95 flex items-center justify-center gap-2"
         >
-          + Đặt Phòng Mới
+          <span>+ Đặt Phòng Mới</span>
         </button>
       </div>
 
-      {/* Bộ lọc hiện đại */}
-      <div className="bg-white rounded-[1.5rem] border border-gray-100 p-5 flex flex-wrap gap-4 shadow-sm">
-        <div className="flex-1 relative">
-          {/* Lớp bọc Icon để căn giữa tuyệt đối theo chiều dọc */}
+      {/* BỘ LỌC HIỆN ĐẠI - ĐỒNG BỘ UI SEARCH */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 flex flex-wrap gap-4 shadow-sm">
+        <div className="flex-1 relative min-w-[250px]">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
             <Search className="w-5 h-5 text-gray-400" />
           </div>
-
           <input
             type="text"
             placeholder="Tìm mã booking, tên khách, số phòng..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
+            className="w-full pl-12 pr-4 py-3.5 bg-gray-50 dark:bg-gray-900/80 border-2 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white rounded-2xl focus:border-blue-500 dark:focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-4 focus:ring-blue-500/10 transition-all font-semibold outline-none text-[15px]"
           />
         </div>
-        <div className="flex items-center gap-3 bg-gray-50/50 px-4 py-1 rounded-xl border border-gray-200">
+        <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-900/80 px-4 py-2 rounded-2xl border-2 border-gray-200 dark:border-gray-600 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10 transition-all">
           <Filter size={18} className="text-gray-400" />
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="bg-transparent py-2 text-sm font-bold text-gray-600 outline-none cursor-pointer"
+            className="bg-transparent py-1.5 text-[13px] font-extrabold uppercase tracking-wide text-gray-700 dark:text-gray-200 outline-none cursor-pointer appearance-none"
           >
             <option value="all">Tất cả trạng thái</option>
             <option value="pending">Chờ xác nhận</option>
@@ -197,12 +152,12 @@ export function BookingManagement() {
         </div>
       </div>
 
-      {/* Bảng dữ liệu */}
-      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
+      {/* BẢNG DỮ LIỆU - VIỀN KẺ RÕ RÀNG */}
+      <div className="bg-white dark:bg-gray-800 rounded-[2rem] border-2 border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-gray-50/50 border-b border-gray-100 text-[11px] font-black text-gray-400 uppercase tracking-widest">
+              <tr className="bg-gray-50 dark:bg-gray-900/50 border-b-2 border-gray-200 dark:border-gray-700 text-[12px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest whitespace-nowrap">
                 <th className="px-6 py-5">Mã Booking</th>
                 <th className="px-6 py-5">Khách Hàng</th>
                 <th className="px-6 py-5 text-center">Phòng</th>
@@ -212,83 +167,87 @@ export function BookingManagement() {
                 <th className="px-6 py-5 text-right">Thao Tác</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
                   <td colSpan={7} className="text-center py-20">
-                    <Loader2 className="animate-spin mx-auto text-blue-500 w-8 h-8" />
-                    <p className="mt-2 text-xs font-bold text-gray-400 uppercase tracking-tighter">
+                    <Loader2 className="animate-spin mx-auto text-blue-500 w-8 h-8 mb-3" />
+                    <p className="text-[12px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
                       Đang tải dữ liệu...
                     </p>
                   </td>
                 </tr>
               ) : (
-                filteredBookings.map((booking) => (
-                  <tr
-                    key={booking.id}
-                    className="hover:bg-blue-50/30 group transition-colors"
-                  >
-                    <td className="px-6 py-4 font-mono text-[11px] font-bold text-blue-600">
-                      #{booking.id.slice(0, 8).toUpperCase()}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-black text-gray-900">
-                        {booking.guests?.full_name}
-                      </div>
-                      <div className="text-[11px] font-bold text-gray-400">
-                        {booking.guests?.phone}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-xs font-black">
-                        P.{booking.rooms?.room_number}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase leading-relaxed">
-                      <div className="flex items-center gap-2">
-                        <span className="w-8 text-emerald-500">In:</span>{" "}
-                        {new Date(booking.check_in_date).toLocaleDateString(
-                          "vi-VN",
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="w-8 text-rose-500">Out:</span>{" "}
-                        {new Date(booking.check_out_date).toLocaleDateString(
-                          "vi-VN",
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right font-black text-gray-900">
-                      {Number(booking.total_amount).toLocaleString()}đ
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span
-                        className={`px-3 py-1 text-[10px] font-black rounded-lg border uppercase tracking-tighter ${getStatusStyle(booking.status)}`}
-                      >
-                        {booking.status.replace("_", " ")}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => setSelectedBookingId(booking.id)}
-                          className="flex items-center gap-1.5 text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white text-[11px] font-black px-3 py-2 rounded-xl transition-all border border-blue-100"
+                filteredBookings.length > 0 ? (
+                  filteredBookings.map((booking) => (
+                    <tr
+                      key={booking.id}
+                      className="hover:bg-blue-50/50 dark:hover:bg-gray-700/50 transition-colors group"
+                    >
+                      <td className="px-6 py-4 font-mono text-[13px] font-extrabold text-blue-600 dark:text-blue-400">
+                        #{booking.id.slice(0, 8).toUpperCase()}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-[15px] font-extrabold text-gray-900 dark:text-white mb-0.5 whitespace-nowrap">
+                          {booking.guests?.full_name}
+                        </div>
+                        <div className="text-[13px] font-bold text-gray-500 dark:text-gray-400">
+                          {booking.guests?.phone}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="inline-block px-3 py-1.5 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-[13px] font-extrabold whitespace-nowrap">
+                          P.{booking.rooms?.room_number}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-[13px] font-bold text-gray-600 dark:text-gray-300 leading-relaxed whitespace-nowrap">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="w-8 text-[11px] font-extrabold text-emerald-500 uppercase tracking-wider">In:</span>{" "}
+                          {new Date(booking.check_in_date).toLocaleDateString("vi-VN")}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-8 text-[11px] font-extrabold text-rose-500 uppercase tracking-wider">Out:</span>{" "}
+                          {new Date(booking.check_out_date).toLocaleDateString("vi-VN")}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-right text-[15px] font-extrabold text-gray-900 dark:text-white whitespace-nowrap">
+                        {Number(booking.total_amount).toLocaleString()}đ
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span
+                          className={`inline-block px-3 py-1.5 text-[11px] font-extrabold rounded-lg border uppercase tracking-wider whitespace-nowrap ${getStatusStyle(booking.status)}`}
                         >
-                          <Receipt size={14} /> CHI TIẾT
-                        </button>
-
-                        {booking.status === "checked_in" && (
+                          {booking.status.replace("_", " ")}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2 opacity-100 md:opacity-80 md:group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => setSelectedBookingId(booking.id)}
-                            className="flex items-center gap-1.5 bg-rose-50 text-rose-600 text-[11px] font-black px-3 py-2 border border-rose-100 rounded-xl hover:bg-rose-600 hover:text-white transition-all"
+                            className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white text-[11px] font-extrabold px-4 py-2.5 rounded-xl transition-all border border-blue-200 dark:border-blue-800/50 whitespace-nowrap"
                           >
-                            <LogOut size={14} /> TRẢ PHÒNG
+                            <Receipt size={14} /> CHI TIẾT
                           </button>
-                        )}
-                      </div>
+
+                          {booking.status === "checked_in" && (
+                            <button
+                              onClick={() => setSelectedBookingId(booking.id)}
+                              className="flex items-center gap-1.5 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 text-[11px] font-extrabold px-4 py-2.5 border border-rose-200 dark:border-rose-800/50 rounded-xl hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 dark:hover:text-white transition-all whitespace-nowrap"
+                            >
+                              <LogOut size={14} /> TRẢ PHÒNG
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="text-center py-16 text-gray-500 dark:text-gray-400 font-bold text-[14px]">
+                      Không tìm thấy đặt phòng nào phù hợp.
                     </td>
                   </tr>
-                ))
+                )
               )}
             </tbody>
           </table>

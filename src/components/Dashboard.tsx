@@ -210,64 +210,49 @@ export function Dashboard() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 font-sans antialiased">
       
-      {/* HEADER BANNER - CHUẨN STYLE KHO VẬT TƯ */}
-      <div style={{ 
-        backgroundColor: "#2563eb", borderRadius: "2rem", padding: "2rem", color: "#ffffff",
-        display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 10px 15px rgba(0,0,0,0.1)"
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "1.25rem" }}>
-          <div style={{ width: "4rem", height: "4rem", backgroundColor: "rgba(255, 255, 255, 0.2)", borderRadius: "1.25rem", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Hotel style={{ width: "2rem", height: "2rem", color: "#ffffff" }} />
+      {/* HEADER BANNER - ĐỒNG BỘ MÀU NỀN #D1F4FA VỚI SIDEBAR */}
+      <div className="bg-[#D1F4FA] dark:bg-gray-800 rounded-[2rem] p-8 flex justify-between items-center shadow-sm border border-blue-100 dark:border-gray-700">
+        <div className="flex items-center gap-5">
+          <div className="w-16 h-16 bg-blue-600/10 dark:bg-white/10 rounded-2xl flex items-center justify-center">
+            <Hotel className="w-8 h-8 text-blue-700 dark:text-blue-400" />
           </div>
           <div>
-            <h1 style={{ fontSize: "1.875rem", fontWeight: "900", margin: 0, textTransform: "uppercase" }}>Bảng Điều Khiển Hệ Thống</h1>
-            <p style={{ color: "rgba(255, 255, 255, 0.8)", margin: 0 }}>Chào mừng trở lại! Theo dõi hoạt động HotelPro của bạn.</p>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">
+              Bảng Điều Khiển Hệ Thống
+            </h1>
           </div>
         </div>
-        {/* <button
-          style={{ backgroundColor: "#ffffff", color: "#2563eb", padding: "0.8rem 1.5rem", borderRadius: "1rem", border: "none", fontWeight: "900", cursor: "pointer", textTransform: "uppercase", fontSize: "0.75rem" }}
-        >
-          Xuất Báo Cáo
-        </button> */}
       </div>
 
       {/* THÔNG TIN LỌC */}
-      <div
-        className="shadow-sm"
-        style={{
-          backgroundColor: "#ffffff",
-          borderRadius: "1rem",
-          border: "1px solid rgba(229, 231, 235, 0.5)",
-          padding: "20px",
-        }}
-      >
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700 p-5 shadow-sm">
         <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-2" style={{ color: "#94a3b8" }}>
+          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
             <Filter className="w-5 h-5" />
-            <span style={{ fontSize: "14px", fontWeight: 500, color: "#4b5563" }}>Bộ lọc:</span>
+            <span className="text-[15px] font-bold text-gray-700 dark:text-gray-300">Bộ lọc:</span>
           </div>
 
           <div className="flex gap-4 flex-1 flex-wrap">
             <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4" style={{ color: "#6b7280" }} />
-              <label style={{ fontSize: "14px", color: "#4b5563", fontWeight: 500 }}>Từ ngày:</label>
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <label className="text-[14px] font-semibold text-gray-700 dark:text-gray-300">Từ ngày:</label>
               <input
                 type="date"
                 value={dateRange.from}
                 onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
-                style={{ padding: "8px 16px", border: "1px solid #e5e7eb", borderRadius: "0.75rem", fontSize: "14px", backgroundColor: "#f9fafb", outline: "none" }}
+                className="px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-[14px] font-medium bg-gray-50 dark:bg-gray-700 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all"
               />
             </div>
 
             <div className="flex items-center gap-2">
-              <label style={{ fontSize: "14px", color: "#4b5563", fontWeight: 500 }}>Đến ngày:</label>
+              <label className="text-[14px] font-semibold text-gray-700 dark:text-gray-300">Đến ngày:</label>
               <input
                 type="date"
                 value={dateRange.to}
                 onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
-                style={{ padding: "8px 16px", border: "1px solid #e5e7eb", borderRadius: "0.75rem", fontSize: "14px", backgroundColor: "#f9fafb", outline: "none" }}
+                className="px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-[14px] font-medium bg-gray-50 dark:bg-gray-700 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all"
               />
             </div>
           </div>
@@ -279,28 +264,28 @@ export function Dashboard() {
         {stats.map((stat, index) => {
           const Icon = stat.icon;
           const colorTheme = {
-            blue: { grad: "linear-gradient(135deg, #60a5fa, #3b82f6)", bg: "#eff6ff" },
-            green: { grad: "linear-gradient(135deg, #34d399, #10b981)", bg: "#ecfdf5" },
-            purple: { grad: "linear-gradient(135deg, #a78bfa, #8b5cf6)", bg: "#f5f3ff" },
-            amber: { grad: "linear-gradient(135deg, #fbbf24, #f59e0b)", bg: "#fffbeb" },
+            blue: "from-blue-400 to-blue-600 shadow-blue-500/30",
+            green: "from-emerald-400 to-emerald-600 shadow-emerald-500/30",
+            purple: "from-purple-400 to-purple-600 shadow-purple-500/30",
+            amber: "from-amber-400 to-amber-500 shadow-amber-500/30",
           };
-          const theme = index === 0 ? colorTheme.blue : index === 1 ? colorTheme.green : index === 2 ? colorTheme.purple : colorTheme.amber;
+          const themeClass = index === 0 ? colorTheme.blue : index === 1 ? colorTheme.green : index === 2 ? colorTheme.purple : colorTheme.amber;
 
           return (
-            <div key={stat.label} style={{ position: "relative", backgroundColor: "#ffffff", borderRadius: "1.5rem", padding: "24px", border: "1px solid #f1f5f9", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)", transition: "all 0.3s ease", cursor: "pointer", overflow: "hidden" }}>
-              <div style={{ position: "relative", zIndex: 1 }}>
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "16px" }}>
-                  <div style={{ width: "56px", height: "56px", borderRadius: "16px", background: theme.grad, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)" }}>
-                    <Icon size={28} color="#ffffff" />
+            <div key={stat.label} className="bg-white dark:bg-gray-800 rounded-3xl p-6 border border-slate-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all cursor-pointer relative overflow-hidden group">
+              <div className="relative z-10">
+                <div className="flex items-start justify-between mb-4">
+                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${themeClass} flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-300`}>
+                    <Icon size={28} className="text-white" />
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 8px", backgroundColor: "#f0fdf4", color: "#16a34a", borderRadius: "8px", fontSize: "12px", fontWeight: 700 }}>
+                  <div className="flex items-center gap-1 px-2.5 py-1 bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg text-xs font-bold">
                     <ArrowUp size={12} /> {stat.change}
                   </div>
                 </div>
                 <div>
-                  <p style={{ fontSize: "14px", color: "#64748b", fontWeight: 600, margin: "0 0 4px 0" }}>{stat.label}</p>
-                  <p style={{ fontSize: "26px", fontWeight: 900, color: "#0f172a", margin: "0 0 4px 0", letterSpacing: "-0.5px" }}>{stat.value}</p>
-                  <p style={{ fontSize: "12px", color: "#94a3b8", fontWeight: 500, margin: 0, textTransform: "uppercase", letterSpacing: "0.5px" }}>{stat.subtext}</p>
+                  <p className="text-[15px] font-bold text-gray-500 dark:text-gray-400 mb-1">{stat.label}</p>
+                  <p className="text-3xl font-extrabold text-slate-900 dark:text-white mb-1 tracking-tight">{stat.value}</p>
+                  <p className="text-[11px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{stat.subtext}</p>
                 </div>
               </div>
             </div>
@@ -310,51 +295,51 @@ export function Dashboard() {
 
       {/* BIỂU ĐỒ CHÍNH */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div style={{ backgroundColor: "#ffffff", borderRadius: "1.5rem", border: "1px solid rgba(229, 231, 235, 0.5)", boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)", overflow: "hidden" }}>
-          <div style={{ padding: "24px", borderBottom: "1px solid rgba(229, 231, 235, 0.5)", background: "linear-gradient(to right, #eff6ff, #eef2ff)" }}>
-            <div className="flex items-center gap-3">
-              <div style={{ width: "48px", height: "48px", borderRadius: "0.75rem", background: "linear-gradient(to bottom right, #3b82f6, #4f46e5)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 6px rgba(59, 130, 246, 0.3)" }}>
-                <DollarSign size={24} color="#ffffff" />
+        <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200/50 dark:border-gray-700 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-gray-200/50 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50/50 dark:from-gray-800 dark:to-gray-800">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-500/20">
+                <DollarSign size={24} className="text-white" />
               </div>
               <div>
-                <h2 style={{ fontSize: "16px", fontWeight: 600, color: "#111827", margin: 0 }}>Doanh Thu Theo Loại Phòng</h2>
-                <p style={{ fontSize: "14px", color: "#6b7280", margin: 0 }}>Phân bố doanh thu thực tế</p>
+                <h2 className="text-lg font-extrabold text-gray-900 dark:text-white">Doanh Thu Theo Loại Phòng</h2>
+                <p className="text-[14px] font-semibold text-gray-500 dark:text-gray-400">Phân bố doanh thu thực tế</p>
               </div>
             </div>
           </div>
-          <div style={{ padding: "24px" }}>
+          <div className="p-6">
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie data={revenueByRoomType} cx="50%" cy="50%" labelLine={false} label={({ name, percent }: any) => `${name}: ${(percent * 100).toFixed(0)}%`} outerRadius={100} dataKey="value">
                   {revenueByRoomType.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                 </Pie>
                 <Tooltip formatter={(value: any) => [`${Number(value).toLocaleString("vi-VN")}₫`, "Doanh thu"]} />
-                <Legend verticalAlign="bottom" height={36} />
+                <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontWeight: 600, fontSize: "14px" }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div style={{ backgroundColor: "#ffffff", borderRadius: "1.5rem", border: "1px solid rgba(229, 231, 235, 0.5)", boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)", overflow: "hidden" }}>
-          <div style={{ padding: "24px", borderBottom: "1px solid rgba(229, 231, 235, 0.5)", background: "linear-gradient(to right, #f0fdf4, #ecfdf5)" }}>
-            <div className="flex items-center gap-3">
-              <div style={{ width: "48px", height: "48px", borderRadius: "0.75rem", background: "linear-gradient(to bottom right, #22c55e, #10b981)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 6px rgba(34, 197, 94, 0.3)" }}>
-                <Bed size={24} color="#ffffff" />
+        <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200/50 dark:border-gray-700 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-gray-200/50 dark:border-gray-700 bg-gradient-to-r from-green-50 to-emerald-50/50 dark:from-gray-800 dark:to-gray-800">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center shadow-md shadow-green-500/20">
+                <Bed size={24} className="text-white" />
               </div>
               <div>
-                <h2 style={{ fontSize: "16px", fontWeight: 600, color: "#111827", margin: 0 }}>Trạng Thái Phòng</h2>
-                <p style={{ fontSize: "14px", color: "#6b7280", margin: 0 }}>Tổng số {totalRooms} phòng hiện tại</p>
+                <h2 className="text-lg font-extrabold text-gray-900 dark:text-white">Trạng Thái Phòng</h2>
+                <p className="text-[14px] font-semibold text-gray-500 dark:text-gray-400">Tổng số {totalRooms} phòng hiện tại</p>
               </div>
             </div>
           </div>
-          <div style={{ padding: "24px" }}>
+          <div className="p-6">
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie data={roomStatusData} cx="50%" cy="50%" labelLine={false} label={({ name, percent }: any) => `${name}: ${(percent * 100).toFixed(0)}%`} outerRadius={100} dataKey="value">
                   {roomStatusData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                 </Pie>
                 <Tooltip formatter={(value: any) => [`${value} phòng`, "Số lượng"]} />
-                <Legend verticalAlign="bottom" height={36} />
+                <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontWeight: 600, fontSize: "14px" }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -362,28 +347,40 @@ export function Dashboard() {
       </div>
 
       {/* BẢNG ĐẶT PHÒNG GẦN ĐÂY */}
-      <div className="overflow-hidden" style={{ backgroundColor: "#ffffff", borderRadius: "1.5rem", border: "1px solid #f1f5f9", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)" }}>
-        <div style={{ padding: "24px", borderBottom: "1px solid #f1f5f9", background: "linear-gradient(to right, #f8fafc, #ffffff)" }}>
-          <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#0f172a", margin: 0 }}>Đặt Phòng Mới Nhất</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-3xl border border-slate-100 dark:border-gray-700 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-slate-100 dark:border-gray-700 bg-slate-50/50 dark:bg-gray-800/50">
+          <h2 className="text-lg font-extrabold text-slate-900 dark:text-white">Đặt Phòng Mới Nhất</h2>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full" style={{ borderCollapse: "collapse", minWidth: "600px" }}>
+          <table className="w-full min-w-[600px] text-left border-collapse">
             <thead>
-              <tr style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+              <tr className="bg-slate-50 dark:bg-gray-800/80 border-b border-slate-200 dark:border-gray-700">
                 {["Khách Hàng", "Phòng", "Ngày Đến", "Ngày Đi", "Trạng Thái"].map((header) => (
-                  <th key={header} style={{ padding: "16px 24px", textAlign: "left", fontSize: "11px", fontWeight: 800, color: "#64748b", textTransform: "uppercase" }}>{header}</th>
+                  <th key={header} className="p-4 px-6 text-[12px] font-extrabold text-slate-500 dark:text-gray-400 uppercase tracking-widest whitespace-nowrap">
+                    {header}
+                  </th>
                 ))}
               </tr>
             </thead>
-            <tbody style={{ backgroundColor: "#ffffff" }}>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-slate-100 dark:divide-gray-700">
               {recentBookings.map((b) => (
-                <tr key={b.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                  <td style={{ padding: "16px 24px" }}><div style={{ fontSize: "14px", fontWeight: 600 }}>{b.guests?.full_name || "Khách lẻ"}</div></td>
-                  <td style={{ padding: "16px 24px" }}><span style={{ fontWeight: 700, color: "#4f46e5" }}>P.{b.rooms?.room_number || "---"}</span></td>
-                  <td style={{ padding: "16px 24px" }}>{new Date(b.check_in_date).toLocaleDateString("vi-VN")}</td>
-                  <td style={{ padding: "16px 24px" }}>{new Date(b.check_out_date).toLocaleDateString("vi-VN")}</td>
-                  <td style={{ padding: "16px 24px" }}>
-                    <span style={{ padding: "4px 12px", fontSize: "11px", fontWeight: 800, borderRadius: "9999px", backgroundColor: "#dcfce7", color: "#15803d" }}>{b.status}</span>
+                <tr key={b.id} className="hover:bg-slate-50/50 dark:hover:bg-gray-700/50 transition-colors">
+                  <td className="p-4 px-6 text-[15px] font-bold text-gray-900 dark:text-white">
+                    {b.guests?.full_name || "Khách lẻ"}
+                  </td>
+                  <td className="p-4 px-6">
+                    <span className="font-extrabold text-indigo-600 dark:text-indigo-400">P.{b.rooms?.room_number || "---"}</span>
+                  </td>
+                  <td className="p-4 px-6 text-[14px] font-semibold text-gray-600 dark:text-gray-300">
+                    {new Date(b.check_in_date).toLocaleDateString("vi-VN")}
+                  </td>
+                  <td className="p-4 px-6 text-[14px] font-semibold text-gray-600 dark:text-gray-300">
+                    {new Date(b.check_out_date).toLocaleDateString("vi-VN")}
+                  </td>
+                  <td className="p-4 px-6">
+                    <span className="px-3 py-1.5 text-[12px] font-extrabold rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 uppercase tracking-wider">
+                      {b.status}
+                    </span>
                   </td>
                 </tr>
               ))}

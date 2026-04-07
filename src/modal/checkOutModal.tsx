@@ -81,16 +81,24 @@ export function CheckoutModal({
     fetchInvoice();
   }, [isOpen, bookingId, debouncedDiscount, discountType]);
 
-  const handleConfirmCheckout = async () => {
+ const handleConfirmCheckout = async () => {
     if (!data || !calc) return;
     setCalculating(true);
+
+    // 1. TÍNH TOÁN LẠI ĐỂ GỬI ĐÚNG VÀO DATABASE (Theo logic bảng Báo cáo)
+    // Tạm tính = Tiền phòng + Tiền dịch vụ
+    const subTotal = (calc.roomCharge || 0) + (calc.serviceCharge || 0);
+    // Số tiền giảm giá thực tế (Số tiền mặt được trừ)
+    const discountValue = subTotal - (calc.total || 0);
 
     const amounts = {
       roomTotal: calc.roomCharge,
       serviceTotal: calc.serviceCharge,
-      grandTotal: calc.total,
+      discountAmount: discountValue, // THÊM DÒNG NÀY: Để báo cáo hiện cột Giảm giá
+      grandTotal: subTotal,          // QUAN TRỌNG: Gửi Tạm tính vào total_amount
     };
 
+    // 2. GỬI DỮ LIỆU LÊN SERVICE
     const res = await checkInOutService.confirmCheckOutMaster(
       data,
       amounts,

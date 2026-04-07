@@ -125,7 +125,7 @@ export function RoomManagement() {
           </div>
           <div>
             <h1 style={{ fontSize: "1.875rem", fontWeight: "900", margin: 0, textTransform: "uppercase" }}>QUẢN LÝ PHÒNG</h1>
-            <p style={{ color: "rgba(255, 255, 255, 0.8)", margin: 0 }}>Quản lý sơ đồ phòng, trạng thái và thiết lập giá HotelPro</p>
+            {/* <p style={{ color: "rgba(255, 255, 255, 0.8)", margin: 0 }}>Quản lý sơ đồ phòng, trạng thái và thiết lập giá HotelPro</p> */}
           </div>
         </div>
         <button 

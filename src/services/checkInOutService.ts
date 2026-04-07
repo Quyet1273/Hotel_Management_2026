@@ -110,9 +110,8 @@ export const checkInOutService = {
 
   /**
    * 3. XÁC NHẬN NHẬN PHÒNG (Check-in Master)
-   * Cập nhật trạng thái Booking và đổi trạng thái Phòng sang 'occupied' (đang ở).
    */
-  confirmCheckInMaster: async (bookingId: string, roomId: string,) => {
+  confirmCheckInMaster: async (bookingId: string, roomId: string) => {
     try {
       const { error: bErr } = await supabase
         .from("bookings")
@@ -132,41 +131,44 @@ export const checkInOutService = {
   },
 
   /**
-   * 4. XÁC NHẬN TRẢ PHÒNG & LƯU HÓA ĐƠN (Check-out Master)
-   * Quy trình: Lưu hóa đơn -> Cập nhật Booking -> Trả phòng trống.
+   * 4. XÁC NHẬN TRẢ PHÒNG & LƯU HÓA ĐƠN (ĐÃ FIX GIẢM GIÁ)
    */
   confirmCheckOutMaster: async (
     booking: any, 
-    amounts: { roomTotal: number; serviceTotal: number; grandTotal: number }, 
+    amounts: { roomTotal: number; serviceTotal: number; discountAmount: number; grandTotal: number }, 
     paymentMethod: string
   ) => {
     try {
-      // a. Gọi invoiceService để tạo bản ghi hóa đơn mới
+      // a. Gọi invoiceService để tạo bản ghi hóa đơn mới - Đã thêm discount_amount
       const invResult = await invoiceService.createInvoice({
         booking_id: booking.id,
         guest_id: booking.guests?.id,
         room_id: booking.rooms?.id,
         room_total: amounts.roomTotal,
         service_total: amounts.serviceTotal,
-        total_amount: amounts.grandTotal,
+        discount_amount: amounts.discountAmount, // <--- LƯU GIẢM GIÁ VÀO ĐÂY
+        total_amount: amounts.grandTotal,        // <--- ĐÂY LÀ TỔNG TẠM TÍNH (trước VAT/giảm giá nếu bác muốn)
         payment_method: paymentMethod
       });
 
       if (!invResult.success) throw new Error("Không thể lưu hóa đơn: " + invResult.error);
 
-      // b. Cập nhật trạng thái Booking sang checked_out và ghi nhận doanh thu
+      // b. Cập nhật trạng thái Booking sang checked_out và ghi nhận doanh thu thực tế
+      // Thực thu = Tổng cộng - Giảm giá
+      const actualRevenue = amounts.grandTotal - (amounts.discountAmount || 0);
+
       const { error: bErr } = await supabase
         .from("bookings")
         .update({ 
           status: 'checked_out', 
-          total_amount: amounts.grandTotal,
+          total_amount: actualRevenue, 
           updated_at: new Date().toISOString()
         })
         .eq("id", booking.id);
 
       if (bErr) throw bErr;
 
-      // c. Trả phòng về trạng thái trống (available)
+      // c. Trả phòng về trạng thái chờ dọn (dirty)
       const { error: rErr } = await supabase
         .from("rooms")
         .update({ status: 'dirty' })

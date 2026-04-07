@@ -206,9 +206,9 @@ export function RolePermissionManagement() {
           <h2 className="text-2xl font-bold text-gray-900">
             Quản Lý Nhân Viên & Phân Quyền
           </h2>
-          <p className="text-gray-600 mt-1">
+          {/* <p className="text-gray-600 mt-1">
             Quản lý vai trò và quyền truy cập hệ thống
-          </p>
+          </p> */}
         </div>
         {activeTab === "roles" && (
           <button

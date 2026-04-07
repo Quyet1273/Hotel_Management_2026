@@ -10,74 +10,122 @@ import {
   Receipt,
   ChevronRight,
   Phone,
-  ConciergeBell, // Icon mới cho Header
+  ConciergeBell,
+  Home,
+  CheckCircle2,
+  RefreshCw,
 } from "lucide-react";
 import { checkInOutService } from "../services/checkInOutService";
-import { HousekeepingManagement } from "./HousekeepingManagement";
+import { roomService, Room } from "../services/roomService";
 import { toast } from "sonner";
-
-// Import Modal dùng chung
 import { CheckoutModal } from "../modal/checkOutModal";
 
 export function CheckInOut() {
   const [bookings, setBookings] = useState<any[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // --- STATES BỘ LỌC ---
+  const [activeTab, setActiveTab] = useState<
+    "pending" | "confirmed" | "checked_in"
+  >("pending");
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState<"pending" | "confirmed" | "checked_in">("pending");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterType, setFilterType] = useState<string>("all");
 
-  const [hoveredTab, setHoveredTab] = useState<string | null>(null);
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
-  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(
+    null,
+  );
 
-  // Cấu hình màu sắc cho từng Tab
-  const tabConfig: any = {
-    pending: {
-      base: "#f59e0b",
-      light: "#fffbeb",
-      shadow: "rgba(245, 158, 11, 0.3)",
-      label: "Chờ duyệt",
-      icon: <Clock />,
-    },
-    confirmed: {
-      base: "#3b82f6",
-      light: "#eff6ff",
-      shadow: "rgba(59, 130, 246, 0.3)",
-      label: "Nhận phòng",
-      icon: <LogIn />,
-    },
-    checked_in: {
-      base: "#e11d48",
-      light: "#fff1f2",
-      shadow: "rgba(225, 29, 72, 0.3)",
-      label: "Trả phòng",
-      icon: <LogOut />,
-    },
-  };
+  // --- 1. RESET TOÀN BỘ BỘ LỌC KHI ĐỔI TAB (FIX LỖI CHÍ MẠNG) ---
+  useEffect(() => {
+    setSearchTerm("");
+    setFilterStatus("all");
+    setFilterType("all");
+  }, [activeTab]);
 
-  const loadBookings = async () => {
+  const loadData = async () => {
     setLoading(true);
-    const result = await checkInOutService.getCheckInOutList();
-    if (result.success) {
-      setBookings(result.data || []);
-    } else {
-      toast.error("Lỗi tải dữ liệu: " + result.error);
+    try {
+      const [bookingRes, roomRes] = await Promise.all([
+        checkInOutService.getCheckInOutList(),
+        roomService.getAllRooms(),
+      ]);
+      if (bookingRes.success) setBookings(bookingRes.data || []);
+      if (roomRes.success) setRooms(roomRes.data || []);
+    } catch (error) {
+      toast.error("Không thể kết nối máy chủ");
     }
     setLoading(false);
   };
 
   useEffect(() => {
-    loadBookings();
+    loadData();
   }, []);
 
-  const handleUpdateStatus = async (id: string, status: string, msg: string) => {
+  // --- 2. LOGIC LỌC PHÒNG (FIX LỖI BỘ LỌC MÀU VÀNG) ---
+  const filteredRooms = rooms.filter((room) => {
+    // Khớp Search (Số phòng)
+    const searchMatch = room.room_number
+      .toString()
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+
+    // Khớp Loại phòng
+    const typeMatch = filterType === "all" || room.room_type === filterType;
+
+    // Khớp Trạng thái (Quan trọng nhất)
+    let statusMatch = false;
+    if (filterStatus === "all") {
+      statusMatch = true;
+    } else if (filterStatus === "available") {
+      statusMatch = room.status === "available";
+    } else if (filterStatus === "occupied") {
+      statusMatch = room.status === "occupied";
+    } else if (filterStatus === "maintenance") {
+      // Nếu không phải Xanh (available) và Đỏ (occupied) thì là Vàng
+      statusMatch = room.status !== "available" && room.status !== "occupied";
+    }
+
+    return searchMatch && typeMatch && statusMatch;
+  });
+
+  // --- 3. LOGIC LỌC BOOKING (NHẬN/TRẢ PHÒNG) ---
+  const filteredBookings = bookings
+    .filter((b) => b.status === activeTab)
+    .filter((b) => {
+      const s = searchTerm.toLowerCase();
+      return (
+        b.guests?.full_name?.toLowerCase().includes(s) ||
+        b.rooms?.room_number?.toString().includes(s)
+      );
+    });
+
+  const handleMarkAsReady = async (roomId: string) => {
+    const result = await roomService.updateRoom(roomId, {
+      status: "available",
+    });
+    if (result.success) {
+      toast.success("Phòng đã sạch sẽ!");
+      loadData();
+    }
+  };
+
+  const handleUpdateStatus = async (
+    id: string,
+    status: string,
+    msg: string,
+  ) => {
     if (status === "checked_in") {
       const target = bookings.find((b) => b.id === id);
-      const result = await checkInOutService.confirmCheckInMaster(id, target.room_id);
+      const result = await checkInOutService.confirmCheckInMaster(
+        id,
+        target.room_id,
+      );
       if (result?.success) {
         toast.success(msg);
-        loadBookings();
-      } else {
-        toast.error("Thất bại: " + result?.error);
+        loadData();
       }
     } else if (status === "checked_out") {
       setSelectedBookingId(id);
@@ -85,183 +133,289 @@ export function CheckInOut() {
     }
   };
 
-  const displayBookings = bookings.filter((b) => b.status === activeTab);
-
-  const filteredBookings = displayBookings.filter((b) => {
-    const search = searchTerm.toLowerCase();
-    return (
-      b.guests?.full_name?.toLowerCase().includes(search) ||
-      b.rooms?.room_number?.toString().includes(search)
-    );
-  });
+  const getRoomVisuals = (status: string) => {
+    if (status === "occupied")
+      return {
+        color: "#e11d48",
+        bg: "#fff1f2",
+        border: "#fecaca",
+        text: "Đang thuê",
+      };
+    if (status === "available")
+      return {
+        color: "#10b981",
+        bg: "#ecfdf5",
+        border: "#a7f3d0",
+        text: "Trống",
+      };
+    return {
+      color: "#f59e0b",
+      bg: "#fffbeb",
+      border: "#fef08a",
+      text: "Chờ dọn",
+    };
+  };
 
   if (loading)
     return (
-      <div className="p-10 text-center animate-pulse text-gray-500 font-medium italic">
-        Đang tải dữ liệu từ hệ thống...
+      <div className="p-20 text-center font-black text-gray-400 animate-pulse">
+        HỆ THỐNG ĐANG TẢI...
       </div>
     );
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-10">
-      
-      {/* HEADER BANNER - CHUẨN STYLE HOTELPRO */}
-      <div style={{ 
-        backgroundColor: "#2563eb", borderRadius: "2rem", padding: "2rem", color: "#ffffff",
-        display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 10px 15px rgba(0,0,0,0.1)"
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "1.25rem" }}>
-          <div style={{ width: "4rem", height: "4rem", backgroundColor: "rgba(255, 255, 255, 0.2)", borderRadius: "1.25rem", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <ConciergeBell style={{ width: "2rem", height: "2rem", color: "#ffffff" }} />
+    <div className="space-y-6 animate-in fade-in duration-500 pb-10 font-sans antialiased">
+      {/* HEADER BANNER - ĐỒNG BỘ MÀU NỀN #D1F4FA */}
+      <div className="bg-[#D1F4FA] dark:bg-gray-800 rounded-[2rem] p-8 flex justify-between items-center shadow-sm border border-blue-100 dark:border-gray-700">
+        <div className="flex items-center gap-5">
+          <div className="w-16 h-16 bg-blue-600/10 dark:bg-white/10 rounded-2xl flex items-center justify-center">
+            <ConciergeBell className="w-8 h-8 text-blue-700 dark:text-blue-400" />
           </div>
           <div>
-            <h1 style={{ fontSize: "1.875rem", fontWeight: "900", margin: 0, textTransform: "uppercase" }}>QUẦY LỄ TÂN</h1>
-            <p style={{ color: "rgba(255, 255, 255, 0.8)", margin: 0 }}>Quản lý nhận phòng, trả phòng & thanh toán tức thì</p>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">
+              Quầy Lễ Tân
+            </h1>
+            <p className="text-[15px] font-bold text-gray-700 dark:text-gray-300 mt-1">
+              Phòng {rooms.length} | Chờ dọn{" "}
+              {
+                rooms.filter(
+                  (r) => r.status !== "available" && r.status !== "occupied",
+                ).length
+              }
+            </p>
           </div>
         </div>
-        <div style={{ backgroundColor: "rgba(255, 255, 255, 0.15)", padding: "0.8rem 1.5rem", borderRadius: "1rem", backdropFilter: "blur(4px)", border: "1px solid rgba(255, 255, 255, 0.2)" }}>
-          <p style={{ margin: 0, fontSize: "0.875rem", fontWeight: "800", display: "flex", alignItems: "center", gap: "8px" }}>
-            <Calendar size={16} /> {new Date().toLocaleDateString("vi-VN")}
-          </p>
-        </div>
+        <button
+          onClick={loadData}
+          className="p-3 bg-white/60 hover:bg-white dark:bg-gray-700 dark:hover:bg-gray-600 text-blue-700 dark:text-blue-400 rounded-xl transition-all shadow-sm border border-white/50 dark:border-gray-600"
+        >
+          <RefreshCw size={24} />
+        </button>
       </div>
 
-      {/* Tabs Menu & Search Bar Box */}
-      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
-        {/* Tabs Row */}
-        <div style={{ display: "flex", padding: "8px", gap: "8px", backgroundColor: "#f8fafc" }}>
-          {Object.keys(tabConfig).map((key) => {
-            const config = tabConfig[key];
-            const isActive = activeTab === key;
-            const isHovered = hoveredTab === key;
-            return (
-              <button
-                key={key}
-                onClick={() => setActiveTab(key as any)}
-                onMouseEnter={() => setHoveredTab(key)}
-                onMouseLeave={() => setHoveredTab(null)}
-                style={{
-                  flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "10px",
-                  padding: "12px 20px", borderRadius: "1.25rem", border: "none", cursor: "pointer",
-                  fontWeight: "800", fontSize: "13px", textTransform: "uppercase",
-                  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                  backgroundColor: isActive ? config.light : "transparent",
-                  color: isActive ? config.base : "#94a3b8",
-                  transform: isHovered ? "scale(1.02)" : "scale(1)",
-                  boxShadow: isHovered ? `0 10px 20px ${config.shadow}` : "none",
-                  zIndex: isHovered ? 10 : 1,
-                }}
-              >
-                <span style={{ color: isActive || isHovered ? config.base : "#94a3b8" }}>
-                  {cloneElement(config.icon, { size: 18 })}
-                </span>
-                {config.label}
-              </button>
-            );
-          })}
+      <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+        {/* MENU TABS */}
+        <div className="flex p-2 gap-2 bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700">
+          {[
+            {
+              id: "pending",
+              label: "Buồng phòng",
+              icon: <Home size={18} />,
+              color: "#f59e0b",
+              darkColor: "#fbbf24",
+            },
+            {
+              id: "confirmed",
+              label: "Nhận phòng",
+              icon: <LogIn size={18} />,
+              color: "#3b82f6",
+              darkColor: "#60a5fa",
+            },
+            {
+              id: "checked_in",
+              label: "Trả phòng",
+              icon: <LogOut size={18} />,
+              color: "#e11d48",
+              darkColor: "#fb7185",
+            },
+          ].map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id as any)}
+              className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-2xl font-extrabold uppercase text-[13px] tracking-wide transition-all ${
+                activeTab === t.id
+                  ? "bg-white dark:bg-gray-700 shadow-sm border border-gray-100 dark:border-gray-600"
+                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/50"
+              }`}
+              style={{ color: activeTab === t.id ? t.color : "" }}
+            >
+              {t.icon} {t.label}
+            </button>
+          ))}
         </div>
 
-        {/* Search Bar - ĐÃ FIX LỆCH ICON */}
-        <div style={{ padding: "16px", borderBottom: "1px solid #f9fafb" }}>
-          <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-            <div style={{ position: "absolute", left: "16px", display: "flex", alignItems: "center", pointerEvents: "none" }}>
-              <Search size={18} style={{ color: "#9ca3af" }} />
+        {/* SEARCH & FILTERS - ĐÃ LÀM NỔI BẬT VIỀN VÀ HIỆU ỨNG */}
+        <div className="p-5 border-b border-gray-100 dark:border-gray-700 flex flex-wrap gap-4 bg-white dark:bg-gray-800">
+          <div className="relative flex-1 min-w-[250px]">
+            {/* Bọc icon thế này là auto căn giữa 100% theo input */}
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Search className="text-gray-400" size={18} />
             </div>
+
             <input
               type="text"
-              placeholder="Tìm theo tên khách hoặc số phòng..."
+              placeholder={
+                activeTab === "pending"
+                  ? "Tìm số phòng..."
+                  : "Tìm tên khách hoặc số phòng..."
+              }
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                width: "100%", padding: "12px 16px 12px 48px", backgroundColor: "#f8fafc",
-                border: "1px solid #f1f5f9", borderRadius: "14px", fontSize: "14px",
-                color: "#1e293b", outline: "none", transition: "all 0.2s ease", fontWeight: "500"
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = "#3b82f6";
-                e.currentTarget.style.backgroundColor = "#ffffff";
-                e.currentTarget.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = "#f1f5f9";
-                e.currentTarget.style.backgroundColor = "#f8fafc";
-                e.currentTarget.style.boxShadow = "none";
-              }}
+              className="w-full pl-12 pr-4 py-3.5 bg-gray-50 dark:bg-gray-900/80 border-2 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white rounded-2xl focus:border-blue-500 dark:focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-4 focus:ring-blue-500/10 transition-all font-semibold outline-none text-[15px]"
             />
           </div>
+
+          {activeTab === "pending" && (
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="px-6 py-3.5 bg-gray-50 dark:bg-gray-900/80 border-2 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-2xl text-[13px] font-extrabold uppercase tracking-wide outline-none focus:border-blue-500 dark:focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-4 focus:ring-blue-500/10 transition-all cursor-pointer appearance-none"
+            >
+              <option value="all">Tất cả trạng thái</option>
+              <option value="available">Phòng trống (Xanh)</option>
+              <option value="occupied">Đang thuê (Đỏ)</option>
+              <option value="maintenance">Chờ dọn (Vàng)</option>
+            </select>
+          )}
         </div>
 
-        {/* Housekeeping Management */}
-        {activeTab === "pending" && (
-          <div style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #f1f5f9", padding: "0 16px", marginBottom: "16px" }}>
-            <HousekeepingManagement />
-          </div>
-        )}
-
-        {/* Bookings List */}
-        <div className="divide-y divide-gray-50">
-          {filteredBookings.length > 0 ? (
+        {/* LIST CONTENT */}
+        <div className="divide-y divide-gray-100 dark:divide-gray-700/50">
+          {activeTab === "pending" ? (
+            filteredRooms.length > 0 ? (
+              filteredRooms.map((room) => {
+                const visual = getRoomVisuals(room.status);
+                return (
+                  <div
+                    key={room.id}
+                    className="p-6 hover:bg-blue-50/30 dark:hover:bg-gray-700/30 transition-all flex items-center justify-between group"
+                  >
+                    <div className="flex items-center gap-6">
+                      <div
+                        style={{
+                          backgroundColor: visual.bg,
+                          borderColor: visual.border,
+                        }}
+                        className="w-16 h-16 rounded-2xl border-2 flex flex-col items-center justify-center shadow-sm group-hover:scale-105 transition-transform"
+                      >
+                        <span
+                          style={{ color: visual.color }}
+                          className="text-xl font-extrabold"
+                        >
+                          {room.room_number}
+                        </span>
+                        <span
+                          style={{ color: visual.color }}
+                          className="text-[9px] font-extrabold uppercase tracking-wider"
+                        >
+                          {visual.text}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-extrabold text-[15px] text-gray-900 dark:text-white uppercase tracking-wide mb-1">
+                          Loại: {room.room_type}
+                        </p>
+                        <p className="text-[13px] text-gray-500 dark:text-gray-400 font-bold">
+                          Vị trí: Tầng {room.floor || 1}
+                        </p>
+                      </div>
+                    </div>
+                    {room.status !== "available" &&
+                    room.status !== "occupied" ? (
+                      <button
+                        onClick={() => handleMarkAsReady(room.id)}
+                        className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-extrabold text-[11px] uppercase tracking-wider flex items-center gap-2 shadow-md shadow-amber-500/20 transition-all"
+                      >
+                        <CheckCircle2 size={16} /> Sẵn sàng
+                      </button>
+                    ) : (
+                      <div
+                        style={{
+                          color: visual.color,
+                          backgroundColor: visual.bg,
+                          borderColor: visual.border,
+                        }}
+                        className="px-5 py-2 rounded-full text-[11px] font-extrabold uppercase tracking-wider border shadow-sm"
+                      >
+                        {visual.text}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="p-20 text-center text-gray-400 dark:text-gray-500 font-extrabold uppercase text-[13px] tracking-widest">
+                Không tìm thấy phòng phù hợp
+              </div>
+            )
+          ) : /* BOOKING LIST (CONFIRMED / CHECKED_IN) */
+          filteredBookings.length > 0 ? (
             filteredBookings.map((booking) => (
-              <div key={booking.id} className="p-6 hover:bg-slate-50/50 transition-all group">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 flex-1 gap-6 items-center">
+              <div
+                key={booking.id}
+                className="p-6 hover:bg-blue-50/30 dark:hover:bg-gray-700/30 transition-all"
+              >
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                  <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Cột 1: Khách hàng */}
-                    <div className="flex gap-4 items-center">
-                      <div style={{ width: "44px", height: "44px", borderRadius: "14px", backgroundColor: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", color: "#3b82f6", flexShrink: 0 }}>
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center shadow-sm">
                         <User size={22} />
                       </div>
-                      <div style={{ minWidth: 0 }}>
-                        <p style={{ fontSize: "15px", fontWeight: "900", color: "#111827", margin: 0 }}>{booking.guests?.full_name}</p>
-                        <p style={{ fontSize: "12px", color: "#6b7280", display: "flex", alignItems: "center", gap: "4px", marginTop: "2px", fontWeight: "600" }}>
-                          <Phone size={12} /> {booking.guests?.phone}
+                      <div>
+                        <p className="font-extrabold text-[15px] text-gray-900 dark:text-white mb-0.5">
+                          {booking.guests?.full_name}
+                        </p>
+                        <p className="text-[13px] text-gray-500 dark:text-gray-400 font-bold">
+                          {booking.guests?.phone}
                         </p>
                       </div>
                     </div>
 
-                    {/* Cột 2: Thông tin Phòng */}
+                    {/* Cột 2: Phòng */}
                     <div className="flex items-center gap-4">
-                      <div style={{ width: "44px", height: "44px", backgroundColor: "#f5f3ff", border: "1px solid #ede9fe", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        <Bed size={22} className="text-purple-600" />
+                      <div className="w-12 h-12 bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-xl flex items-center justify-center shadow-sm">
+                        <Bed size={22} />
                       </div>
                       <div>
-                        <p style={{ fontSize: "15px", fontWeight: "900", color: "#111827", margin: 0 }}>Phòng {booking.rooms?.room_number}</p>
-                        <p style={{ fontSize: "10px", color: "#7c3aed", fontWeight: "900", textTransform: "uppercase", margin: 0, letterSpacing: "0.5px" }}>{booking.rooms?.room_type}</p>
+                        <p className="font-extrabold text-[15px] text-gray-900 dark:text-white mb-0.5">
+                          Phòng {booking.rooms?.room_number}
+                        </p>
+                        <p className="text-[11px] text-purple-600 dark:text-purple-400 font-extrabold uppercase tracking-wider">
+                          {booking.rooms?.room_type}
+                        </p>
                       </div>
                     </div>
 
-                    {/* Cột 3: Lịch trình */}
+                    {/* Cột 3: Thời gian */}
                     <div className="flex items-center gap-4">
-                      <div style={{ width: "44px", height: "44px", backgroundColor: "#f0f9ff", border: "1px solid #e0f2fe", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        <Calendar size={22} className="text-blue-600" />
+                      <div className="w-12 h-12 bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 rounded-xl flex items-center justify-center shadow-sm">
+                        <Calendar size={22} />
                       </div>
                       <div>
-                        <p style={{ fontSize: "13px", fontWeight: "800", color: "#1f2937", margin: 0 }}>Thời gian lưu trú</p>
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", fontWeight: "700", color: "#6b7280", marginTop: "2px" }}>
-                          <span>{booking.check_in_date}</span>
-                          <ChevronRight size={12} />
-                          <span>{booking.check_out_date}</span>
-                        </div>
+                        <p className="text-[11px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-0.5">
+                          Lưu trú
+                        </p>
+                        <p className="text-[13px] font-bold text-gray-700 dark:text-gray-300">
+                          {booking.check_in_date} → {booking.check_out_date}
+                        </p>
                       </div>
                     </div>
                   </div>
 
                   {/* Nút hành động */}
-                  <div className="flex items-center shrink-0">
-                    {activeTab === "confirmed" && (
+                  <div className="mt-4 lg:mt-0 flex-shrink-0">
+                    {activeTab === "confirmed" ? (
                       <button
-                        onClick={() => handleUpdateStatus(booking.id, "checked_in", "Khách nhận phòng")}
-                        className="px-8 py-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all font-black uppercase text-xs flex items-center gap-2 active:scale-95"
+                        onClick={() =>
+                          handleUpdateStatus(
+                            booking.id,
+                            "checked_in",
+                            "Check-in thành công",
+                          )
+                        }
+                        className="w-full lg:w-auto px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-extrabold text-[13px] uppercase tracking-wider shadow-lg shadow-blue-500/30 transition-all active:scale-95"
                       >
-                        <LogIn size={18} /> Nhận Phòng
+                        Nhận Phòng
                       </button>
-                    )}
-
-                    {activeTab === "checked_in" && (
+                    ) : (
                       <button
-                        onClick={() => handleUpdateStatus(booking.id, "checked_out", "")}
-                        className="px-8 py-3 bg-rose-600 text-white rounded-2xl hover:bg-rose-700 shadow-lg shadow-rose-200 transition-all font-black uppercase text-xs flex items-center gap-2 active:scale-95"
+                        onClick={() =>
+                          handleUpdateStatus(booking.id, "checked_out", "")
+                        }
+                        className="w-full lg:w-auto px-8 py-3.5 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl font-extrabold text-[13px] uppercase tracking-wider shadow-lg shadow-rose-500/30 transition-all active:scale-95"
                       >
-                        <Receipt size={18} /> Thanh toán
+                        Thanh toán
                       </button>
                     )}
                   </div>
@@ -269,9 +423,8 @@ export function CheckInOut() {
               </div>
             ))
           ) : (
-            <div className="p-20 text-center">
-              <Calendar className="text-gray-100 w-20 h-20 mx-auto mb-4" />
-              <p className="text-gray-400 font-black uppercase text-xs tracking-widest">Hiện không có yêu cầu nào</p>
+            <div className="p-20 text-center text-gray-400 dark:text-gray-500 font-extrabold uppercase text-[13px] tracking-widest">
+              Danh sách trống
             </div>
           )}
         </div>
@@ -280,8 +433,11 @@ export function CheckInOut() {
       <CheckoutModal
         isOpen={isCheckoutModalOpen}
         bookingId={selectedBookingId}
-        onClose={() => { setIsCheckoutModalOpen(false); setSelectedBookingId(null); }}
-        onSuccess={() => loadBookings()}
+        onClose={() => {
+          setIsCheckoutModalOpen(false);
+          setSelectedBookingId(null);
+        }}
+        onSuccess={() => loadData()}
       />
     </div>
   );

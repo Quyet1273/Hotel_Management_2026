@@ -5,6 +5,7 @@ export interface InvoiceData {
   guest_id: string;
   room_id: string;
   room_total: number;
+  discount_amount: number;
   service_total: number;
   total_amount: number;
   payment_method: string;

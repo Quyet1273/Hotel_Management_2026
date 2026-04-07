@@ -80,174 +80,157 @@ export function ExpenseManagement() {
       </div>
     );
 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", paddingBottom: "2.5rem" }}>
+ return (
+    <div className="flex flex-col gap-6 pb-20 animate-in fade-in duration-500 font-sans antialiased">
       
-      {/* HEADER - Đã thêm nút Xuất Excel */}
-      <div
-        style={{ 
-          backgroundColor: "#e11d48", 
-          borderRadius: "2rem", 
-          padding: "2rem", 
-          color: "#ffffff", 
-          display: "flex", 
-          justifyContent: "space-between", 
-          alignItems: "center",
-          position: "relative",
-          overflow: "hidden",
-          boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)"
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "1.25rem", position: "relative", zIndex: 10 }}>
-          <div style={{ width: "4rem", height: "4rem", backgroundColor: "rgba(255, 255, 255, 0.2)", borderRadius: "1rem", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Receipt style={{ width: "2rem", height: "2rem", color: "#ffffff" }} />
+      {/* HEADER BANNER - CHUẨN DESIGN GỐC */}
+      <div className="bg-[#e0f2fe] rounded-[2rem] p-6 lg:p-8 flex flex-col md:flex-row justify-between md:items-center gap-6">
+        <div className="flex items-center gap-5">
+          <div className="w-14 h-14 bg-[#bae6fd] rounded-2xl flex items-center justify-center">
+            <Receipt className="w-7 h-7 text-blue-600" />
           </div>
           <div>
-            <h1 style={{ fontSize: "1.875rem", fontWeight: "900", margin: 0, letterSpacing: "-0.025em" }}>QUẢN LÝ CHI PHÍ</h1>
-            <p style={{ color: "rgba(255, 255, 255, 0.8)", margin: 0, fontSize: "0.875rem" }}>Theo dõi dòng tiền chi ra của HotelPro</p>
+            <h1 className="text-[22px] md:text-[28px] font-black m-0 tracking-tight uppercase text-slate-900">
+              QUẢN LÝ CHI PHÍ
+            </h1>
           </div>
         </div>
-
-        {/* Nút Xuất Excel mới thêm */}
         <button 
           onClick={handleExportExcel}
-          style={{ 
-            backgroundColor: "#ffffff", color: "#e11d48", padding: "0.8rem 1.5rem", 
-            borderRadius: "1.25rem", border: "none", fontWeight: "900", cursor: "pointer",
-            display: "flex", alignItems: "center", gap: "0.6rem", boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-            zIndex: 20, fontSize: "0.85rem", textTransform: "uppercase"
-          }}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-7 py-3.5 rounded-2xl font-bold text-[13px] uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm"
         >
-          <Download size={18} /> Xuất File Excel
+          <Download size={18} strokeWidth={2.5} /> XUẤT BÁO CÁO EXCEL
         </button>
       </div>
 
       {/* STATS CARDS */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
         <StatCard
-          icon={<TrendingDown />}
+          icon={<TrendingDown size={28}/>}
           label="TỔNG CHI"
           value={formatCurrency(stats.total)}
-          iconColor="#e11d48"
-          bgColor="#fff1f2"
+          iconColor="text-rose-600"
+          bgColor="bg-rose-50"
         />
         <StatCard
-          icon={<Calendar />}
+          icon={<Calendar size={28}/>}
           label="CHI THÁNG NÀY"
           value={formatCurrency(stats.thisMonth)}
-          iconColor="#ea580c"
-          bgColor="#fff7ed"
+          iconColor="text-orange-600"
+          bgColor="bg-orange-50"
         />
         <StatCard
-          icon={<Wallet />}
+          icon={<Wallet size={28}/>}
           label="TIỀN MẶT"
           value={formatCurrency(stats.cash)}
-          iconColor="#059669"
-          bgColor="#ecfdf5"
+          iconColor="text-emerald-600"
+          bgColor="bg-emerald-50"
         />
         <StatCard
-          icon={<CreditCard />}
+          icon={<CreditCard size={28}/>}
           label="CHUYỂN KHOẢN"
           value={formatCurrency(stats.transfer)}
-          iconColor="#2563eb"
-          bgColor="#eff6ff"
+          iconColor="text-blue-600"
+          bgColor="bg-blue-50"
         />
       </div>
 
       {/* TABLE SECTION */}
-      <div style={{ backgroundColor: "#ffffff", borderRadius: "2rem", border: "1px solid #f3f4f6", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-        <div style={{ padding: "1rem", backgroundColor: "rgba(249, 250, 251, 0.5)", borderBottom: "1px solid #f3f4f6" }}>
-          <div style={{ position: "relative", maxWidth: "400px" }}>
-            <Search style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", width: "1.25rem", height: "1.25rem", color: "#9ca3af" }} />
+      <div className="bg-white rounded-[2rem] border-2 border-slate-100 overflow-hidden shadow-sm">
+        
+        {/* TOOLBAR */}
+        <div className="p-5 flex flex-col md:flex-row items-center gap-4 border-b-2 border-slate-100 bg-white">
+          <div className="relative flex-1 w-full max-w-md">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Search className="w-5 h-5 text-slate-400" />
+            </div>
             <input
               type="text"
               placeholder="Tìm kiếm nội dung chi..."
-              style={{ width: "100%", padding: "0.75rem 1rem 0.75rem 3rem", borderRadius: "1rem", border: "1px solid #e5e7eb", outline: "none" }}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full h-[48px] pl-11 pr-5 bg-slate-50 border-2 border-slate-100 rounded-xl text-[14px] font-bold text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm"
             />
           </div>
         </div>
 
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", textAlign: "left", borderCollapse: "collapse" }}>
-            <thead style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+        {/* BẢNG DỮ LIỆU */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-slate-50/50 border-b-2 border-slate-100">
               <tr>
-                <th style={{ padding: "1.25rem", fontSize: "0.75rem", fontWeight: "900", color: "#64748b", textTransform: "uppercase" }}>Thời gian</th>
-                <th style={{ padding: "1.25rem", fontSize: "0.75rem", fontWeight: "900", color: "#64748b", textTransform: "uppercase" }}>Nội dung chi phí</th>
-                <th style={{ padding: "1.25rem", fontSize: "0.75rem", fontWeight: "900", color: "#64748b", textTransform: "uppercase" }}>Danh mục</th>
-                <th style={{ padding: "1.25rem", fontSize: "0.75rem", fontWeight: "900", color: "#64748b", textTransform: "uppercase" }}>Hình thức</th>
-                <th style={{ padding: "1.25rem", fontSize: "0.75rem", fontWeight: "900", color: "#64748b", textTransform: "uppercase", textAlign: "right" }}>Số tiền</th>
+                <th className="px-6 py-5 text-[11px] font-extrabold uppercase text-slate-500 tracking-widest whitespace-nowrap">Thời gian</th>
+                <th className="px-6 py-5 text-[11px] font-extrabold uppercase text-slate-500 tracking-widest whitespace-nowrap">Nội dung chi phí</th>
+                <th className="px-6 py-5 text-[11px] font-extrabold uppercase text-slate-500 tracking-widest text-center whitespace-nowrap">Danh mục</th>
+                <th className="px-6 py-5 text-[11px] font-extrabold uppercase text-slate-500 tracking-widest text-center whitespace-nowrap">Hình thức</th>
+                <th className="px-6 py-5 text-[11px] font-extrabold uppercase text-slate-500 tracking-widest text-right whitespace-nowrap">Số tiền</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100">
               {filteredExpenses.map((exp) => (
-                <tr key={exp.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                  <td style={{ padding: "1.25rem" }}>
-                    <div style={{ fontSize: "0.875rem", fontWeight: "700", color: "#111827" }}>{new Date(exp.created_at).toLocaleDateString("vi-VN")}</div>
-                    <div style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{new Date(exp.created_at).toLocaleTimeString("vi-VN")}</div>
+                <tr key={exp.id} className="hover:bg-blue-50/50 transition-colors group">
+                  <td className="px-6 py-5 whitespace-nowrap">
+                    <div className="font-extrabold text-[14px] text-slate-900 mb-0.5">
+                      {new Date(exp.created_at).toLocaleDateString("vi-VN")}
+                    </div>
+                    <div className="text-[12px] font-bold text-slate-500">
+                      {new Date(exp.created_at).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}
+                    </div>
                   </td>
-                  <td style={{ padding: "1.25rem", fontSize: "0.875rem", fontWeight: "700", color: "#1f2937" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <ArrowDownRight style={{ width: "1rem", height: "1rem", color: "#e11d48" }} />
+                  <td className="px-6 py-5">
+                    <div className="flex items-center gap-2 font-extrabold text-[15px] text-slate-900 whitespace-nowrap">
+                      <ArrowDownRight className="w-4 h-4 text-rose-600 shrink-0" />
                       {exp.description}
                     </div>
                   </td>
-                  <td style={{ padding: "1.25rem" }}>
-                    <span style={{ padding: "0.25rem 0.75rem", backgroundColor: "#f3f4f6", color: "#4b5563", borderRadius: "0.5rem", fontSize: "0.75rem", fontWeight: "900" }}>
+                  <td className="px-6 py-5 text-center">
+                    <span className="inline-block px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 font-black text-[11px] uppercase tracking-widest border border-slate-200 shadow-sm whitespace-nowrap">
                       {exp.category === "inventory" ? "NHẬP KHO" : exp.category}
                     </span>
                   </td>
-                  <td style={{ padding: "1.25rem", fontSize: "0.75rem", fontWeight: "700", color: "#4b5563" }}>
-                    {exp.payment_method === "cash" ? "💵 Tiền mặt" : "💳 Chuyển khoản"}
+                  <td className="px-6 py-5 text-center">
+                    {exp.payment_method === 'cash' ? (
+                      <span className="inline-block px-4 py-1.5 rounded-xl text-[11px] font-extrabold uppercase tracking-wider border whitespace-nowrap bg-emerald-50 text-emerald-600 border-emerald-200">
+                        💵 TIỀN MẶT
+                      </span>
+                    ) : (
+                      <span className="inline-block px-4 py-1.5 rounded-xl text-[11px] font-extrabold uppercase tracking-wider border whitespace-nowrap bg-violet-50 text-violet-600 border-violet-200">
+                        🏦 CHUYỂN KHOẢN
+                      </span>
+                    )}
                   </td>
-                  <td style={{ padding: "1.25rem", textAlign: "right", fontSize: "1rem", fontWeight: "900", color: "#e11d48" }}>
+                  <td className="px-6 py-5 text-right font-black text-rose-600 text-[16px] whitespace-nowrap">
                     {formatCurrency(exp.amount)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {filteredExpenses.length === 0 && (
+             <div className="py-20 flex flex-col items-center justify-center gap-4 text-slate-400">
+                <Receipt className="w-16 h-16 opacity-20" />
+                <p className="font-extrabold text-[14px] uppercase tracking-widest">Không tìm thấy khoản chi nào.</p>
+             </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
+// --- HELPER COMPONENTS ĐÃ ĐỒNG BỘ ---
 function StatCard({ icon, label, value, iconColor, bgColor }: any) {
   return (
-    <div style={{ 
-      backgroundColor: "#ffffff", 
-      borderRadius: "1.5rem", 
-      padding: "1.5rem", 
-      border: "1px solid #f3f4f6", 
-      boxShadow: "0 1px 2px rgba(0,0,0,0.05)" 
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
-        <div style={{ 
-          width: "3rem", 
-          height: "3rem", 
-          borderRadius: "1rem", 
-          display: "flex", 
-          alignItems: "center", 
-          justifyContent: "center", 
-          backgroundColor: bgColor, 
-          color: iconColor 
-        }}>
+    <div className="bg-white rounded-[2rem] p-7 border-2 border-slate-100 shadow-sm flex flex-col gap-5 hover:border-blue-300 transition-all group">
+      <div className="flex justify-between items-start">
+        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform ${bgColor} ${iconColor}`}>
           {icon}
         </div>
-        <span style={{ fontSize: "1.25rem", fontWeight: "900", color: "#111827" }}>
-          {value}
-        </span>
+        <div className="text-right">
+          <span className="text-3xl font-black text-slate-900 tracking-tighter">{value}</span>
+        </div>
       </div>
-      <p style={{ 
-        fontSize: "0.75rem", 
-        fontWeight: "800", 
-        color: "#4b5563", 
-        margin: 0, 
-        textTransform: "uppercase", 
-        letterSpacing: "0.05em" 
-      }}>
+      <p className="text-[11px] font-extrabold text-slate-500 m-0 uppercase tracking-widest">
         {label}
       </p>
     </div>
