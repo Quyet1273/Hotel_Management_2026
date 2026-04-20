@@ -1,7 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import Groq from "groq-sdk";
 
-// 1. Khởi tạo Supabase Client
+// 1. Khởi tạo Supabase Client (Lưu ý: Nếu file này bị báo lỗi đỏ chữ supabase, 
+// hãy đổi thành: import { supabase } from "../lib/supabase"; và xóa 3 dòng dưới đi nhé)
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const supabase = createClient(supabaseUrl, supabaseKey);
@@ -9,11 +10,11 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
 // 2. Khởi tạo Groq Client
 const groq = new Groq({
   apiKey: import.meta.env.VITE_GROQ_API_KEY,
-  dangerouslyAllowBrowser: true, // Bắt buộc phải có cờ này khi chạy Groq trên trình duyệt (Vite)
+  dangerouslyAllowBrowser: true, 
 });
 
 export const chatbotService = {
-  // Hàm 1: Lấy lịch sử chat cũ khi mở khung chat
+  // Hàm 1: Lấy lịch sử chat
   async getChatHistory(sessionId: string) {
     try {
       const { data, error } = await supabase
@@ -29,126 +30,153 @@ export const chatbotService = {
       return [];
     }
   },
-// Hàm 2: Xử lý gửi tin nhắn mới và nhận phản hồi từ AI
-  // async sendMessage(message: string, sessionId: string) {
-  //   try {
-  //     // B1. Lưu câu hỏi của User vào Supabase
-  //     await supabase.from('chat_messages').insert([
-  //       { session_id: sessionId, role: 'user', content: message }
-  //     ]);
 
-  //     const { data: history } = await supabase
-  //       .from('chat_messages')
-  //       .select('role, content')
-  //       .eq('session_id', sessionId)
-  //       .order('created_at', { ascending: false })
-  //       .limit(10); 
-        
-  //     const formattedHistory = history ? history.reverse() : [];
-
-  //     // ==========================================================
-  //     // BƯỚC MỚI: TÌM KIẾM DỮ LIỆU THẬT (RAG CƠ BẢN)
-  //     // ==========================================================
-  //     let realData = "";
-  //     const lowerMessage = message.toLowerCase();
-
-  //     // Nếu user hỏi về "nhân viên"
-  //     if (lowerMessage.includes("nhân viên") || lowerMessage.includes("nhân sự")) {
-  //       // Query thẳng vào bảng employees trong database của bạn
-  //       const { data: employees } = await supabase
-  //         .from('employees')
-  //         .select('email, role, phone, department');
-          
-  //       if (employees && employees.length > 0) {
-  //         realData = "\n\nĐây là dữ liệu danh sách nhân viên thực tế từ Database:\n" + 
-  //           employees.map(emp => `- Email: ${emp.email}, Chức vụ: ${emp.role}, SĐT: ${emp.phone || 'Chưa cập nhật'}`).join("\n");
-  //       } else {
-  //         realData = "\n\nHiện tại chưa có nhân viên nào trong cơ sở dữ liệu.";
-  //       }
-  //     }
-      
-  //     // Bạn có thể làm tương tự cho "phòng", "doanh thu"...
-  //     // if (lowerMessage.includes("phòng trống")) { ... query bảng rooms ... }
-  //     // ==========================================================
-
-  //     // B3. Chuẩn bị Prompt và gọi Groq (Nhét thêm realData vào)
-  //     const systemPrompt = {
-  //       role: 'system',
-  //       content: `Bạn là trợ lý AI thông minh cho phần mềm quản lý khách sạn HotelPro. 
-  //       Nhiệm vụ của bạn là trả lời ngắn gọn, chuyên nghiệp bằng tiếng Việt.
-  //       TUYỆT ĐỐI KHÔNG TỰ BỊA RA DỮ LIỆU. Chỉ sử dụng các thông tin được cung cấp dưới đây để trả lời. Nếu không có thông tin, hãy nói "Tôi chưa có dữ liệu về vấn đề này".
-  //       ${realData}`
-  //     };
-
-  //     const chatCompletion = await groq.chat.completions.create({
-  //       messages: [systemPrompt, ...formattedHistory] as any,
-  //       model: 'llama-3.3-70b-versatile', 
-  //       temperature: 0.2, // Giảm temperature xuống thấp (0.2) để AI bớt "sáng tạo/bịa chuyện"
-  //     });
-
-  //     const botReply = chatCompletion.choices[0]?.message?.content || "Xin lỗi, tôi đang gặp chút sự cố kết nối.";
-
-  //     // B4. Lưu câu trả lời vào Supabase
-  //     await supabase.from('chat_messages').insert([
-  //       { session_id: sessionId, role: 'assistant', content: botReply }
-  //     ]);
-
-  //     return botReply;
-      
-  //   } catch (error) {
-  //     console.error("Lỗi xử lý chatbot:", error);
-  //     return "Đã xảy ra lỗi khi kết nối với máy chủ AI.";
-  //   }
-  // },
-  // Hàm 2: Xử lý gửi tin nhắn mới và nhận phản hồi từ AI
+  // Hàm 2: Xử lý gửi tin nhắn & RAG nâng cao
   async sendMessage(message: string, sessionId: string) {
     try {
-      // B1. Lưu câu hỏi của User vào Supabase
-      await supabase
-        .from("chat_messages")
-        .insert([{ session_id: sessionId, role: "user", content: message }]);
+      // B1. Lưu tin nhắn User
+      await supabase.from('chat_messages').insert([
+        { session_id: sessionId, role: 'user', content: message }
+      ]);
 
-      // B2. Kéo lịch sử chat gần nhất (lấy 10 tin để AI hiểu ngữ cảnh)
+      // B2. Kéo lịch sử chat (Lấy 10 tin gần nhất)
       const { data: history } = await supabase
-        .from("chat_messages")
-        .select("role, content")
-        .eq("session_id", sessionId)
-        .order("created_at", { ascending: false })
-        .limit(10);
-
-      // Đảo ngược mảng để đúng thứ tự thời gian cho AI đọc
+        .from('chat_messages')
+        .select('role, content')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: false })
+        .limit(10); 
+        
       const formattedHistory = history ? history.reverse() : [];
 
-      // B3. Chuẩn bị Prompt và gọi Groq
+      // ==========================================================
+      // BƯỚC 3: BỘ NÃO RAG - TRUY XUẤT DỮ LIỆU ĐA NỀN TẢNG
+      // ==========================================================
+      let realData = "";
+      const lowerMessage = message.toLowerCase();
+
+      try {
+       // 🟢 LUỒNG 1: DOANH THU & BÁO CÁO TÀI CHÍNH
+        if (lowerMessage.includes("doanh thu") || lowerMessage.includes("tiền") || lowerMessage.includes("hóa đơn") || lowerMessage.includes("báo cáo")) {
+          
+          // Đã xóa chữ 'status' đi để query chạy mượt mà 100%
+          const { data: invoices, error: invoiceError } = await supabase.from('invoices').select('total_amount, created_at');
+          
+          if (invoiceError) console.error("Lỗi kéo data hóa đơn:", invoiceError);
+
+          if (invoices && invoices.length > 0) {
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            
+            let revToday = 0, revMonth = 0, revTotal = 0;
+
+            invoices.forEach(inv => {
+              const invDate = new Date(inv.created_at);
+              const amount = Number(inv.total_amount) || 0;
+              revTotal += amount;
+              if (invDate >= today) revToday += amount;
+              if (invDate >= firstDayOfMonth) revMonth += amount;
+            });
+
+            realData += `\n[💰 DOANH THU]: 
+            - Hôm nay: ${revToday.toLocaleString('vi-VN')} VND
+            - Tháng này: ${revMonth.toLocaleString('vi-VN')} VND
+            - Tổng lũy kế: ${revTotal.toLocaleString('vi-VN')} VND (trên ${invoices.length} hóa đơn).`;
+          } else {
+            realData += `\n[💰 DOANH THU]: Hiện chưa có dữ liệu hóa đơn nào trong hệ thống.`;
+          }
+        }
+
+        // 🟢 LUỒNG 2: TỒN KHO & VẬT TƯ
+        if (lowerMessage.includes("kho") || lowerMessage.includes("tồn") || lowerMessage.includes("hàng hóa") || lowerMessage.includes("vật tư")) {
+          const { data: inventory } = await supabase.from('inventory_items').select('*').limit(20);
+          if (inventory && inventory.length > 0) {
+            const itemsList = inventory.map(item => {
+              const name = item.name || item.item_name || 'Mặt hàng ẩn danh';
+              const qty = item.quantity || item.stock || 0;
+              return `- ${name}: ${qty} ${item.unit || ''}`;
+            }).join('\n');
+            realData += `\n[📦 TỒN KHO]: Danh sách vật tư hiện có:\n${itemsList}`;
+          } else {
+            realData += `\n[📦 TỒN KHO]: Kho hiện đang trống.`;
+          }
+        }
+
+        // 🟢 LUỒNG 3: TRẠNG THÁI PHÒNG
+        if (lowerMessage.includes("phòng") || lowerMessage.includes("trống") || lowerMessage.includes("đang ở")) {
+          // Sửa 'type' thành 'room_type' để khớp với cơ sở dữ liệu
+          const { data: rooms, error: roomError } = await supabase.from('rooms').select('room_number, status, room_type');
+          
+          if (roomError) console.error("Lỗi kéo data phòng:", roomError);
+
+          if (rooms && rooms.length > 0) {
+            const available = rooms.filter(r => r.status?.toLowerCase() === 'available' || r.status?.toLowerCase() === 'trống');
+            const occupied = rooms.filter(r => r.status?.toLowerCase() === 'occupied' || r.status?.toLowerCase() === 'đang ở');
+            
+            realData += `\n[🏨 TRẠNG THÁI PHÒNG]: 
+            - Tổng số: ${rooms.length} phòng.
+            - Sẵn sàng đón khách: ${available.length} phòng (Gồm các phòng: ${available.map(r => r.room_number).join(', ')}).
+            - Đang có khách thuê: ${occupied.length} phòng.`;
+          }
+        }
+
+        // 🟢 LUỒNG 4: NHÂN VIÊN & KHÁCH HÀNG
+        if (lowerMessage.includes("nhân viên") || lowerMessage.includes("nhân sự") || lowerMessage.includes("khách hàng")) {
+          const { data: employees } = await supabase.from('employees').select('email, role').limit(10);
+          const { data: guests } = await supabase.from('guests').select('full_name, phone').limit(5);
+          
+          if (employees) {
+            realData += `\n[👥 NHÂN SỰ]: Hệ thống ghi nhận ${employees.length} nhân viên. VD: ` + employees.map(e => `${e.email} (${e.role})`).join(', ') + `.`;
+          }
+          if (guests) {
+            realData += `\n[🤝 KHÁCH HÀNG]: Các khách hàng gần đây: ` + guests.map(g => `${g.full_name}`).join(', ') + `.`;
+          }
+        }
+      } catch (dbError) {
+        console.error("Lỗi truy xuất RAG Supabase:", dbError);
+      }
+
+      // 🟢 XỬ LÝ NẾU KHÔNG TRÚNG TỪ KHÓA NÀO
+      if (!realData) {
+        realData = "\n[LƯU Ý KỊCH BẢN]: User đang giao tiếp thông thường. Hãy trả lời lịch sự. Nếu họ muốn biết số liệu, hãy nhắc họ dùng các từ khóa như: 'doanh thu', 'tồn kho', 'phòng trống', 'nhân viên'.";
+      }
+
+      // ==========================================================
+      // BƯỚC 4: GỌI GROQ AI VỚI SYSTEM PROMPT CỰC GẮT
+      // ==========================================================
       const systemPrompt = {
-        role: "system",
-        content:
-          "Bạn là trợ lý AI thông minh cho phần mềm quản lý khách sạn HotelPro. Dựa vào lịch sử trò chuyện, hãy trả lời ngắn gọn, chuyên nghiệp bằng tiếng Việt.",
+        role: 'system',
+        content: `Bạn là Giám đốc điều hành AI của HotelPro. Bạn có nhiệm vụ cung cấp số liệu chính xác và tư vấn quản lý.
+        
+        QUY TẮC SỐNG CÒN:
+        1. TUYỆT ĐỐI KHÔNG TỰ BỊA DỮ LIỆU. Chỉ sử dụng dữ liệu thực tế được cung cấp trong các tag [DỮ LIỆU] bên dưới.
+        2. Nếu người dùng hỏi số liệu mà không có trong [DỮ LIỆU], hãy trả lời: "Dữ liệu này hiện chưa được cập nhật trong hệ thống."
+        3. Trình bày đẹp mắt, dùng Markdown (gạch đầu dòng, in đậm các con số quan trọng).
+        4. Trả lời ngắn gọn, đi thẳng vào vấn đề.
+
+        DỮ LIỆU HỆ THỐNG TRÍCH XUẤT ĐƯỢC LÚC NÀY:
+        ${realData}`
       };
-      console.log("Check API Key:", import.meta.env.VITE_GROQ_API_KEY);
-      console.log("Check dữ liệu gửi đi:", [systemPrompt, ...formattedHistory]);
 
       const chatCompletion = await groq.chat.completions.create({
         messages: [systemPrompt, ...formattedHistory] as any,
-        model: "llama-3.3-70b-versatile",
-        temperature: 0.7,
+        model: 'llama-3.3-70b-versatile', 
+        temperature: 0.1, // Cực kỳ thấp để AI KHÔNG bịa chuyện, chỉ đọc data
       });
 
-      const botReply =
-        chatCompletion.choices[0]?.message?.content ||
-        "Xin lỗi, tôi đang gặp chút sự cố kết nối.";
+      const botReply = chatCompletion.choices[0]?.message?.content || "Xin lỗi, máy chủ AI đang quá tải, vui lòng thử lại sau.";
 
-      // B4. Lưu câu trả lời của AI vào Supabase
-      await supabase
-        .from("chat_messages")
-        .insert([
-          { session_id: sessionId, role: "assistant", content: botReply },
-        ]);
+      // B5. Lưu phản hồi vào Database
+      await supabase.from('chat_messages').insert([
+        { session_id: sessionId, role: 'assistant', content: botReply }
+      ]);
 
       return botReply;
+      
     } catch (error) {
       console.error("Lỗi xử lý chatbot:", error);
       return "Đã xảy ra lỗi khi kết nối với máy chủ AI.";
     }
-  },
+  }
 };
