@@ -12,6 +12,7 @@ import {
 import { supabase } from "../lib/supabase";
 import { BookingForm } from "./BookingForm";
 import { BookingDetail } from "./BookingDetail";
+import { toast } from "react-hot-toast";
 
 // 1. Định nghĩa Interface chuẩn hóa
 export interface Booking {
@@ -33,13 +34,48 @@ export function BookingManagement() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
-
+  const [activeTab, setActiveTab] = useState("confirmed");
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(
     null,
   );
+const handleUpdateStatus = async (bookingId: string, newStatus: string) => {
+  setLoading(true);
+  try {
+    // 1. Tìm xem đơn này đặt phòng nào
+    const { data: bokingInfo } = await supabase
+      .from("bookings")
+      .select("room_id").eq("id", bookingId).single();
 
-  // 2. Hàm lấy dữ liệu thật từ Supabase
+    if (!bokingInfo) return;
+
+    // 2. CHẶN ĐỨNG: Kiểm tra trạng thái thực tế của phòng NGAY BÂY GIỜ
+    if (newStatus === "checked_in") {
+      const { data: room } = await supabase
+        .from("rooms")
+        .select("status").eq("id", bokingInfo.room_id).single();
+
+      if (room?.status !== "available") {
+        toast.error("PHÒNG ĐANG CÓ NGƯỜI! Đừng có làm liều đại ca!");
+        return; // DỪNG LUÔN TẠI ĐÂY
+      }
+    }
+
+    // 3. Nếu OK thì mới update đồng thời cả 2 bảng
+    await supabase.from("bookings").update({ status: newStatus }).eq("id", bookingId);
+    
+    const nextRoomStatus = newStatus === "checked_in" ? "occupied" : "cleaning";
+    await supabase.from("rooms").update({ status: nextRoomStatus }).eq("id", bokingInfo.room_id);
+
+    toast.success("Xong! Đã khóa phòng an toàn.");
+    fetchBookings(); // Load lại để nút xám đi ngay lập tức
+  } catch (e) {
+    toast.error("Lỗi rồi!");
+  } finally {
+    setLoading(false);
+  }
+};
+  // 2. Hàm lấy dữ liệu thật từ Supabase (ĐÃ THÊM STATUS PHÒNG)
   const fetchBookings = async () => {
     setLoading(true);
     try {
@@ -49,8 +85,8 @@ export function BookingManagement() {
           `
           *,
           guests (full_name, phone),
-          rooms (room_number, room_type)
-        `,
+          rooms (room_number, room_type, status) 
+        `, // <--- PHẢI CÓ 'status' Ở ĐÂY đại ca nhé!
         )
         .order("created_at", { ascending: false });
 
@@ -63,9 +99,11 @@ export function BookingManagement() {
     }
   };
 
+  // 3. TỰ ĐỘNG REFRESH KHI ĐỔI TAB
   useEffect(() => {
     fetchBookings();
-  }, []);
+    // Mỗi khi đại ca bấm đổi Tab (activeTab), hàm này sẽ chạy lại để lấy trạng thái phòng mới nhất
+  }, [activeTab]);
 
   // 3. Logic tìm kiếm & Lọc
   const filteredBookings = bookings.filter((booking) => {
@@ -101,7 +139,7 @@ export function BookingManagement() {
   };
 
   return (
-  <div className="space-y-6 pb-10 font-sans antialiased">
+    <div className="space-y-6 pb-10 font-sans antialiased">
       {/* HEADER BANNER - ĐỒNG BỘ NỀN VÀ FONT */}
       <div className="bg-[#D1F4FA] dark:bg-gray-800 rounded-[2rem] p-8 flex flex-col md:flex-row gap-4 justify-between md:items-center shadow-sm border border-blue-100 dark:border-gray-700">
         <div className="flex items-center gap-5">
@@ -177,77 +215,86 @@ export function BookingManagement() {
                     </p>
                   </td>
                 </tr>
-              ) : (
-                filteredBookings.length > 0 ? (
-                  filteredBookings.map((booking) => (
-                    <tr
-                      key={booking.id}
-                      className="hover:bg-blue-50/50 dark:hover:bg-gray-700/50 transition-colors group"
-                    >
-                      <td className="px-6 py-4 font-mono text-[13px] font-extrabold text-blue-600 dark:text-blue-400">
-                        #{booking.id.slice(0, 8).toUpperCase()}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-[15px] font-extrabold text-gray-900 dark:text-white mb-0.5 whitespace-nowrap">
-                          {booking.guests?.full_name}
-                        </div>
-                        <div className="text-[13px] font-bold text-gray-500 dark:text-gray-400">
-                          {booking.guests?.phone}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="inline-block px-3 py-1.5 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-[13px] font-extrabold whitespace-nowrap">
-                          P.{booking.rooms?.room_number}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-[13px] font-bold text-gray-600 dark:text-gray-300 leading-relaxed whitespace-nowrap">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="w-8 text-[11px] font-extrabold text-emerald-500 uppercase tracking-wider">In:</span>{" "}
-                          {new Date(booking.check_in_date).toLocaleDateString("vi-VN")}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="w-8 text-[11px] font-extrabold text-rose-500 uppercase tracking-wider">Out:</span>{" "}
-                          {new Date(booking.check_out_date).toLocaleDateString("vi-VN")}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right text-[15px] font-extrabold text-gray-900 dark:text-white whitespace-nowrap">
-                        {Number(booking.total_amount).toLocaleString()}đ
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span
-                          className={`inline-block px-3 py-1.5 text-[11px] font-extrabold rounded-lg border uppercase tracking-wider whitespace-nowrap ${getStatusStyle(booking.status)}`}
+              ) : filteredBookings.length > 0 ? (
+                filteredBookings.map((booking) => (
+                  <tr
+                    key={booking.id}
+                    className="hover:bg-blue-50/50 dark:hover:bg-gray-700/50 transition-colors group"
+                  >
+                    <td className="px-6 py-4 font-mono text-[13px] font-extrabold text-blue-600 dark:text-blue-400">
+                      #{booking.id.slice(0, 8).toUpperCase()}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-[15px] font-extrabold text-gray-900 dark:text-white mb-0.5 whitespace-nowrap">
+                        {booking.guests?.full_name}
+                      </div>
+                      <div className="text-[13px] font-bold text-gray-500 dark:text-gray-400">
+                        {booking.guests?.phone}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="inline-block px-3 py-1.5 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-[13px] font-extrabold whitespace-nowrap">
+                        P.{booking.rooms?.room_number}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-[13px] font-bold text-gray-600 dark:text-gray-300 leading-relaxed whitespace-nowrap">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="w-8 text-[11px] font-extrabold text-emerald-500 uppercase tracking-wider">
+                          In:
+                        </span>{" "}
+                        {new Date(booking.check_in_date).toLocaleDateString(
+                          "vi-VN",
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-8 text-[11px] font-extrabold text-rose-500 uppercase tracking-wider">
+                          Out:
+                        </span>{" "}
+                        {new Date(booking.check_out_date).toLocaleDateString(
+                          "vi-VN",
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right text-[15px] font-extrabold text-gray-900 dark:text-white whitespace-nowrap">
+                      {Number(booking.total_amount).toLocaleString()}đ
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span
+                        className={`inline-block px-3 py-1.5 text-[11px] font-extrabold rounded-lg border uppercase tracking-wider whitespace-nowrap ${getStatusStyle(booking.status)}`}
+                      >
+                        {booking.status.replace("_", " ")}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-2 opacity-100 md:opacity-80 md:group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => setSelectedBookingId(booking.id)}
+                          className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white text-[11px] font-extrabold px-4 py-2.5 rounded-xl transition-all border border-blue-200 dark:border-blue-800/50 whitespace-nowrap"
                         >
-                          {booking.status.replace("_", " ")}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2 opacity-100 md:opacity-80 md:group-hover:opacity-100 transition-opacity">
+                          <Receipt size={14} /> CHI TIẾT
+                        </button>
+
+                        {booking.status === "checked_in" && (
                           <button
                             onClick={() => setSelectedBookingId(booking.id)}
-                            className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white text-[11px] font-extrabold px-4 py-2.5 rounded-xl transition-all border border-blue-200 dark:border-blue-800/50 whitespace-nowrap"
+                            className="flex items-center gap-1.5 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 text-[11px] font-extrabold px-4 py-2.5 border border-rose-200 dark:border-rose-800/50 rounded-xl hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 dark:hover:text-white transition-all whitespace-nowrap"
                           >
-                            <Receipt size={14} /> CHI TIẾT
+                            <LogOut size={14} /> TRẢ PHÒNG
                           </button>
-
-                          {booking.status === "checked_in" && (
-                            <button
-                              onClick={() => setSelectedBookingId(booking.id)}
-                              className="flex items-center gap-1.5 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 text-[11px] font-extrabold px-4 py-2.5 border border-rose-200 dark:border-rose-800/50 rounded-xl hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 dark:hover:text-white transition-all whitespace-nowrap"
-                            >
-                              <LogOut size={14} /> TRẢ PHÒNG
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={7} className="text-center py-16 text-gray-500 dark:text-gray-400 font-bold text-[14px]">
-                      Không tìm thấy đặt phòng nào phù hợp.
+                        )}
+                      </div>
                     </td>
                   </tr>
-                )
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan={7}
+                    className="text-center py-16 text-gray-500 dark:text-gray-400 font-bold text-[14px]"
+                  >
+                    Không tìm thấy đặt phòng nào phù hợp.
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
