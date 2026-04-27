@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { Toaster } from "./components/ui/sonner";
+
 // Components
 import { Dashboard } from "./components/Dashboard.js";
 import { RoomManagement } from "./components/RoomManagement.js";
@@ -44,7 +46,7 @@ import {
   Receipt,
   ChevronDown,
 } from "lucide-react";
-import { Toaster } from "./components/ui/sonner.js";
+
 
 
 // --- TYPES ---
@@ -255,6 +257,8 @@ function AppContent() {
   };
 
   return (
+    <>
+    <Toaster position="top-right" richColors closeButton />
     <div
       className={`flex h-screen transition-colors duration-300 font-sans antialiased ${settings.theme === "dark" ? "bg-gray-900 text-white" : "bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-50"} overflow-hidden`}
     >
@@ -480,5 +484,7 @@ function AppContent() {
         </div>
       </main>
     </div>
+    </>
+    
   );
 }

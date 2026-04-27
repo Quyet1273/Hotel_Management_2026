@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { toast } from "react-hot-toast";
+import { toast } from "sonner"; // Dùng trực tiếp từ thư viện
 import {
   X,
   Search,
@@ -7,6 +7,7 @@ import {
   Calendar,
   Home,
   AlertCircle,
+  CreditCard,
   Check,
   Loader2,
 } from "lucide-react";
@@ -31,7 +32,7 @@ export function BookingForm({
   const [availableRooms, setAvailableRooms] = useState<any[]>([]);
   const [showRoomSelection, setShowRoomSelection] = useState(false);
   const [errors, setErrors] = useState<any>({});
-  const now = new Date().toLocaleString('sv-SE').slice(0, 16);
+  const now = new Date().toLocaleString("sv-SE").slice(0, 16);
 
   // States cho tính năng tìm kiếm khách hàng
   const [searchTerm, setSearchTerm] = useState("");
@@ -40,21 +41,26 @@ export function BookingForm({
   const [activeTab, setActiveTab] = useState("confirmed");
 
   const [formData, setFormData] = useState({
-    guestId: "",
-    guestName: "",
-    guestPhone: "",
-    guestIdNumber: "",
-    guestNationality: "Việt Nam",
+    // --- Thông tin Khách hàng (Đầy đủ để lưu vào bảng guests) ---
+    guestId: "", // UUID nếu là khách cũ, để trống nếu là khách mới
+    full_name: "", // Đổi guestName thành full_name cho khớp với bảng guests
+    phone: "", // Đổi guestPhone thành phone
+    id_number: "", // Đổi guestIdNumber thành id_number
+    email: "", // MỚI: Lấy từ GuestForm qua
+    address: "", // MỚI: Lấy từ GuestForm qua
+    nationality: "Việt Nam",
+    // --- Thông tin Đặt phòng (Để lưu vào bảng bookings) ---
     checkIn: "",
     checkOut: "",
-    guests: 1,
+    guests: 1, // Số lượng người ở
     roomType: "",
     roomId: "",
-    specialRequests: "",
+    deposit_amount: 0, // Dùng deposit_amount cho khớp với Interface trong Service
+    specialRequests: "", // Chính là cái notes trong database
   });
   // useEffect(() => {
   //   console.log("Tab đã đổi sang:", activeTab, " -> Đang tải lại dữ liệu mới nhất...");
-  //   fetchBookings(); 
+  //   fetchBookings();
   // }, [activeTab]);
 
   // 1. Khởi tạo dữ liệu
@@ -111,10 +117,12 @@ export function BookingForm({
     setFormData({
       ...formData,
       guestId: guest.id,
-      guestName: guest.full_name,
-      guestPhone: guest.phone,
-      guestIdNumber: guest.id_number,
-      guestNationality: guest.nationality || "Việt Nam",
+      full_name: guest.full_name,
+      phone: guest.phone,
+      id_number: guest.id_number,
+      email: guest.email || "",
+      address: guest.address || "",
+      nationality: guest.nationality || "Việt Nam",
     });
     setSearchTerm(guest.full_name);
     setShowResults(false);
@@ -136,40 +144,56 @@ export function BookingForm({
     }
     setLoading(true);
 
-    // 1. Lấy danh sách phòng theo loại khách chọn
-    const roomsOfType = rooms.filter((r) => r.room_type === formData.roomType);
-    const available: any[] = [];
-
-    // 2. Kiểm tra chồng lấn lịch (Overlap) cho từng phòng
-    for (const room of roomsOfType) {
-      // Gọi service để check xem khoảng [CheckIn - CheckOut] có ai đặt chưa
-      const res = await bookingService.checkRoomAvailability(
-        room.id,
-        new Date(formData.checkIn).toISOString(),
-        new Date(formData.checkOut).toISOString(),
+    try {
+      // 1. Lọc danh sách phòng theo loại
+      const roomsOfType = rooms.filter(
+        (r) => r.room_type === formData.roomType,
       );
 
-      if (res.isAvailable) {
-        available.push(room);
-      }
-    }
-
-    setAvailableRooms(available);
-    setShowRoomSelection(true);
-    setLoading(false);
-
-    if (available.length === 0) {
-      toast("Hết phòng này trong khoảng thời gian trên!", {
-        icon: "⚠️",
+      // 2. Chạy kiểm tra đồng thời tất cả các phòng
+      const checkPromises = roomsOfType.map(async (room) => {
+        const res = await bookingService.checkRoomAvailability(
+          room.id,
+          formData.checkIn, // Gửi chuỗi gốc (VD: "2026-05-01T14:00") để tránh lệch múi giờ
+          formData.checkOut,
+        );
+        if (res.isAvailable) return room;
+        return null;
       });
+
+      const results = await Promise.all(checkPromises);
+      const filteredAvailable = results.filter((r) => r !== null);
+
+      setAvailableRooms(filteredAvailable);
+      setShowRoomSelection(true);
+
+      if (filteredAvailable.length === 0) {
+        toast("Hết sạch phòng này trong khoảng thời gian này!", { icon: "⚠️" });
+      } else {
+        toast.success(`Ngon! Có ${filteredAvailable.length} phòng sẵn sàng.`);
+      }
+    } catch (error: any) {
+      console.error("Lỗi checkAvailableRooms:", error);
+      toast.error("Hệ thống check phòng đang trục trặc!");
+    } finally {
+      setLoading(false);
     }
+  };
+  // 1.  hàm để định dạng ngày giờ cho dễ đọc
+  const formatTime = (dateStr: string) => {
+    return new Date(dateStr).toLocaleString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Kiểm tra chọn phòng
+
+    // 1. Kiểm tra đầu vào
     if (!formData.roomId) {
-      toast.error("Vui lòng chọn phòng trước!");
+      toast.error("Chưa chọn phòng");
       return;
     }
 
@@ -177,85 +201,112 @@ export function BookingForm({
     const checkInDate = new Date(formData.checkIn);
     const checkOutDate = new Date(formData.checkOut);
 
-    // --- CHỐT CHẶN 1: KHÔNG CHO ĐẶT NGÀY QUÁ KHỨ ---
     if (checkInDate < now) {
-      toast.error("Ngày đã qua, không thể đặt!");
+      toast.error("Ngày này qua rồi");
       return;
     }
 
-    // --- CHỐT CHẶN 2: NGÀY RA PHẢI SAU NGÀY VÀO ---
     if (checkOutDate <= checkInDate) {
-      toast.error("Ngày trả phòng phải sau ngày nhận ít nhất 5 phút!");
+      toast.error("Ngày trả phòng phải sau ngày nhận!");
       return;
     }
 
     setLoading(true);
+    console.log(
+      "%c--- TIẾN HÀNH NỔ ĐƠN ---",
+      "color: #3b82f6; font-weight: bold",
+    );
 
-    // DEBUG DỮ LIỆU
-    console.log("%c--- BẮT ĐẦU KIỂM TRA & LƯU BOOKING ---", "color: blue; font-weight: bold");
-    
     try {
-      // --- CHỐT CHẶN 3: KIỂM TRA TRÙNG LỊCH (OVERLAP) LẦN CUỐI ---
-      // Đảm bảo không ai "hớt tay trên" phòng này trong lúc mình đang gõ form
+      // BƯỚC A: Kiểm tra trùng lịch lần cuối (Phòng ngừa có người đặt nhanh hơn)
       const availability = await bookingService.checkRoomAvailability(
         formData.roomId,
-        checkInDate.toISOString(),
-        checkOutDate.toISOString()
+        formData.checkIn,
+        formData.checkOut,
       );
 
       if (!availability.isAvailable) {
-        toast.error("Phòng này đã đặt trùng lịch!");
+        // LẤY ĐƠN TRÙNG ĐẦU TIÊN ĐỂ THÔNG BÁO
+        const conflict = availability.conflicts?.[0];
+
+        if (conflict) {
+          // Hiện thông báo chi tiết: Phòng bận từ [Giờ] [Ngày] đến [Giờ] [Ngày]
+          toast.error(
+            `Phòng này đã có lịch từ ${formatTime(conflict.check_in_date)} đến ${formatTime(conflict.check_out_date)}.`,
+            {
+              duration: 5000, // Cho hiện lâu tí (5 giây) để lễ tân kịp đọc
+              style: {
+                border: "1px solid #ef4444",
+                padding: "16px",
+                color: "#b91c1c",
+              },
+            },
+          );
+        } else {
+          toast.error("Phòng này không sẵn sàng trong khoảng thời gian này!");
+        }
+
         setLoading(false);
         return;
       }
 
-      // BƯỚC 1: Lấy UUID thật bằng cách upsert khách hàng
+      // BƯỚC B: Upsert khách hàng (Lưu hoặc cập nhật thông tin)
       const { data: guestData, error: guestError } = await supabase
         .from("guests")
         .upsert(
           {
-            full_name: formData.guestName,
-            phone: formData.guestPhone,
-            id_number: formData.guestIdNumber,
-            nationality: formData.guestNationality,
+            full_name: formData.full_name,
+            phone: formData.phone,
+            id_number: formData.id_number,
+            nationality: formData.nationality,
+            email: formData.email,
+            address: formData.address,
           },
-          { onConflict: "phone" }
+          { onConflict: "phone" }, // Nếu trùng số điện thoại thì cập nhật thông tin khách
         )
         .select()
         .single();
 
-      if (guestError) throw guestError;
+      if (guestError) {
+        console.error("%c [LỖI KHÁCH HÀNG]:", "color: red;", guestError);
+        throw new Error(`Lỗi thông tin khách: ${guestError.message}`);
+      }
 
-      // BƯỚC 2: Tính tổng tiền
+      // BƯỚC C: Tính tổng tiền
       const selectedRoom = rooms.find((r) => r.id === formData.roomId);
       const nights = calculateNights(formData.checkIn, formData.checkOut);
-      const totalAmount = selectedRoom ? Number(selectedRoom.price) * nights : 0;
+      const totalAmount = selectedRoom
+        ? Number(selectedRoom.price) * nights
+        : 0;
 
-      // BƯỚC 3: Tạo Booking Payload
+      // BƯỚC D: Tạo đơn đặt phòng - DÙNG CHUỖI GỐC (BỎ ISOString)
       const bookingPayload = {
         guest_id: guestData.id,
         room_id: formData.roomId,
-        check_in_date: checkInDate.toISOString(),
-        check_out_date: checkOutDate.toISOString(),
-        status: "confirmed" as any,
+        check_in_date: formData.checkIn,
+        check_out_date: formData.checkOut,
+        status: "confirmed",
         total_amount: totalAmount,
+        deposit_amount: Number(formData.deposit_amount) || 0,
         notes: formData.specialRequests,
       };
-
-      console.log("2. Gói hàng gửi đi:", bookingPayload);
 
       const result = await bookingService.createBooking(bookingPayload);
 
       if (result.success) {
-        toast.success("Đặt phòng thành công!");
+        toast.success("Đã đặt phòng ");
         onSave();
         onClose();
       } else {
         throw new Error(result.error);
       }
     } catch (error: any) {
-      console.error("%c LỖI TẠI handleSubmit:", "color: red; font-weight: bold", error);
-      toast.error("Lỗi: " + error.message);
+      console.error(
+        "%c LỖI THỰC THI CHUNG:",
+        "color: red; font-weight: bold",
+        error,
+      );
+      toast.error(`Đặt phòng lỗi: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -277,36 +328,47 @@ export function BookingForm({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto">
-          {/* Guest Info */}
+        <form
+          onSubmit={handleSubmit}
+          className="p-6 space-y-6 overflow-y-auto max-h-[80vh]"
+        >
+          {/* 1. THÔNG TIN KHÁCH HÀNG (Tích hợp Tìm & Thêm mới) */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 border-b pb-2">
               <User className="text-blue-600 w-5 h-5" />
-              <h3 className="font-bold text-gray-800">Thông tin Khách hàng</h3>
+              <h3 className="font-bold text-gray-800 uppercase tracking-tight">
+                Thông tin Khách hàng
+              </h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Tên & Tìm kiếm */}
               <div className="relative">
-                <div className="relative flex items-center">
+                <label className="text-[11px] font-bold text-gray-500 uppercase ml-1">
+                  Họ và tên *
+                </label>
+                <div className="relative flex items-center mt-1">
                   <input
-                    placeholder="Tìm theo tên hoặc SĐT..."
-                    className="w-full pl-4 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    value={searchTerm}
+                    placeholder="Tìm khách cũ hoặc nhập tên khách mới..."
+                    className="w-full pl-4 pr-12 py-3 border-2 rounded-xl focus:border-blue-500 outline-none transition-all"
+                    value={formData.full_name}
                     onChange={(e) => {
                       setSearchTerm(e.target.value);
                       setShowResults(true);
                       setFormData({
                         ...formData,
-                        guestName: e.target.value,
+                        full_name: e.target.value,
                         guestId: "",
                       });
                     }}
                     onFocus={() => setShowResults(true)}
                   />
-                  <div className="absolute right-4 pointer-events-none">
+                  <div className="absolute right-4">
                     <Search className="w-5 h-5 text-blue-600" />
                   </div>
                 </div>
+
+                {/* Dropdown gợi ý SearchResults */}
                 {showResults && searchResults.length > 0 && (
                   <div className="absolute w-full mt-1 bg-white border border-blue-100 rounded-xl shadow-2xl z-[100] max-h-60 overflow-y-auto">
                     {searchResults.map((g) => (
@@ -316,75 +378,135 @@ export function BookingForm({
                         onClick={() => handleSelectGuest(g)}
                       >
                         <div>
-                          <p className="font-semibold text-gray-900 group-hover:text-blue-700">
+                          <p className="font-bold text-gray-900 group-hover:text-blue-700">
                             {g.full_name}
                           </p>
                           <p className="text-xs text-gray-500">{g.phone}</p>
                         </div>
-                        <Check className="w-4 h-4 text-blue-600 opacity-0 group-hover:opacity-100" />
+                        <Check className="w-4 h-4 text-blue-600" />
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-              <input
-                placeholder="Số điện thoại *"
-                required
-                className="px-4 py-3 border rounded-xl"
-                value={formData.guestPhone}
-                onChange={(e) =>
-                  setFormData({ ...formData, guestPhone: e.target.value })
-                }
-              />
-              <input
-                placeholder="CCCD/Passport *"
-                required
-                className="px-4 py-3 border rounded-xl"
-                value={formData.guestIdNumber}
-                onChange={(e) =>
-                  setFormData({ ...formData, guestIdNumber: e.target.value })
-                }
-              />
-              <input
-                placeholder="Quốc tịch"
-                className="px-4 py-3 border rounded-xl"
-                value={formData.guestNationality}
-                onChange={(e) =>
-                  setFormData({ ...formData, guestNationality: e.target.value })
-                }
-              />
+
+              {/* Số điện thoại */}
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 uppercase ml-1">
+                  Số điện thoại *
+                </label>
+                <input
+                  placeholder="Số điện thoại dùng để định danh"
+                  required
+                  className="w-full mt-1 px-4 py-3 border-2 rounded-xl focus:border-blue-500 outline-none"
+                  value={formData.phone}
+                  onChange={(e) =>
+                    setFormData({ ...formData, phone: e.target.value })
+                  }
+                />
+              </div>
+
+              {/* CCCD */}
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 uppercase ml-1">
+                  CCCD / Passport *
+                </label>
+                <input
+                  placeholder="Số giấy tờ tùy thân"
+                  required
+                  className="w-full mt-1 px-4 py-3 border-2 rounded-xl focus:border-blue-500 outline-none"
+                  value={formData.id_number}
+                  onChange={(e) =>
+                    setFormData({ ...formData, id_number: e.target.value })
+                  }
+                />
+              </div>
+
+              {/* Quốc tịch */}
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 uppercase ml-1">
+                  Quốc tịch
+                </label>
+                <input
+                  placeholder="Việt Nam / Khác..."
+                  className="w-full mt-1 px-4 py-3 border-2 rounded-xl focus:border-blue-500 outline-none"
+                  value={formData.nationality}
+                  onChange={(e) =>
+                    setFormData({ ...formData, nationality: e.target.value })
+                  }
+                />
+              </div>
+
+              {/* Email (Bổ sung từ GuestForm) */}
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 uppercase ml-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  placeholder="khachhang@gmail.com"
+                  className="w-full mt-1 px-4 py-3 border-2 rounded-xl focus:border-blue-500 outline-none"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                />
+              </div>
+
+              {/* Địa chỉ (Bổ sung từ GuestForm) */}
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 uppercase ml-1">
+                  Địa chỉ
+                </label>
+                <input
+                  placeholder="Nhập địa chỉ thường trú"
+                  className="w-full mt-1 px-4 py-3 border-2 rounded-xl focus:border-blue-500 outline-none"
+                  value={formData.address}
+                  onChange={(e) =>
+                    setFormData({ ...formData, address: e.target.value })
+                  }
+                />
+              </div>
             </div>
           </div>
 
-          {/* Booking Info */}
+          {/* 2. THỜI GIAN & LOẠI PHÒNG */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 border-b pb-2">
               <Calendar className="text-blue-600 w-5 h-5" />
-              <h3 className="font-bold text-gray-800">
+              <h3 className="font-bold text-gray-800 uppercase tracking-tight">
                 Thời gian & Loại phòng
               </h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input
-                type="datetime-local"
-                className="px-4 py-3 border rounded-xl"
-                value={formData.checkIn}
-                min={now}
-                onChange={(e) =>
-                  setFormData({ ...formData, checkIn: e.target.value })
-                }
-              />
-              <input
-                type="datetime-local"
-                className="px-4 py-3 border rounded-xl"
-                value={formData.checkOut}
-                min={formData.checkIn || now}
-                onChange={(e) =>
-                  setFormData({ ...formData, checkOut: e.target.value })
-                }
-              />
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-gray-500 uppercase ml-1">
+                  Ngày nhận phòng
+                </label>
+                <input
+                  type="datetime-local"
+                  className="w-full px-4 py-3 border-2 rounded-xl"
+                  value={formData.checkIn}
+                  onChange={(e) =>
+                    setFormData({ ...formData, checkIn: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-gray-500 uppercase ml-1">
+                  Ngày trả phòng
+                </label>
+                <input
+                  type="datetime-local"
+                  className="w-full px-4 py-3 border-2 rounded-xl"
+                  value={formData.checkOut}
+                  onChange={(e) =>
+                    setFormData({ ...formData, checkOut: e.target.value })
+                  }
+                />
+              </div>
               <select
-                className="px-4 py-3 border rounded-xl"
+                className="px-4 py-3 border-2 rounded-xl outline-none focus:border-blue-500"
                 value={formData.roomType}
                 onChange={(e) =>
                   setFormData({
@@ -398,12 +520,11 @@ export function BookingForm({
                 <option value="single">Phòng Đơn</option>
                 <option value="double">Phòng Đôi</option>
                 <option value="suite">Phòng Suite</option>
-                {/* <option value="deluxe">Phòng Deluxe</option> */}
               </select>
               <button
                 type="button"
                 onClick={checkAvailableRooms}
-                className="bg-green-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-green-700 transition-colors"
+                className="bg-green-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-green-700 transition-colors py-3 shadow-md"
               >
                 {loading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -415,64 +536,105 @@ export function BookingForm({
             </div>
           </div>
 
-          {/* Room Selection Grid */}
+          {/* 3. LỰA CHỌN PHÒNG */}
           {showRoomSelection && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-gray-50 rounded-xl">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
               {availableRooms.map((room) => (
                 <button
                   key={room.id}
                   type="button"
                   onClick={() => setFormData({ ...formData, roomId: room.id })}
-                  className={`p-4 border-2 rounded-xl transition-all ${formData.roomId === room.id ? "border-blue-600 bg-blue-100 shadow-md" : "bg-white border-transparent hover:border-gray-200"}`}
+                  className={`p-4 border-2 rounded-xl transition-all ${formData.roomId === room.id ? "border-blue-600 bg-blue-100 shadow-md scale-95" : "bg-white border-gray-100 hover:border-blue-300"}`}
                 >
                   <Home
                     className={`mx-auto mb-1 ${formData.roomId === room.id ? "text-blue-600" : "text-gray-400"}`}
                   />
-                  <p className="font-bold text-center">P.{room.room_number}</p>
-                  <p className="text-xs text-center text-gray-500">
-                    {Number(room.price).toLocaleString()}đ
+                  <p className="font-black text-center">P.{room.room_number}</p>
+                  <p className="text-[11px] text-center text-gray-500">
+                    {Number(room.price).toLocaleString()}đ/đêm
                   </p>
                 </button>
               ))}
             </div>
           )}
 
-          {/* Bảng tính tiền báo giá khách */}
+          {/* 4. TIỀN CỌC & TẠM TÍNH (Bản nâng cấp) */}
           {formData.roomId && (
-            <div className="bg-blue-50 p-5 rounded-2xl border border-blue-200 space-y-3 shadow-inner">
-              <div className="flex justify-between text-sm text-gray-600 italic">
-                <span>
-                  Chi phí tạm tính cho{" "}
-                  {calculateNights(formData.checkIn, formData.checkOut)} đêm:
-                </span>
+            <div className="space-y-4">
+              {/* Ô Nhập Tiền Cọc */}
+              <div className="bg-orange-50 p-4 rounded-2xl border-2 border-orange-200">
+                <label className="flex items-center gap-2 text-xs font-black text-orange-700 uppercase mb-2">
+                  <CreditCard size={16} /> Tiền đặt cọc (VNĐ)
+                </label>
+                <input
+                  type="number"
+                  placeholder="Nhập số tiền khách cọc trước..."
+                  className="w-full px-4 py-3 bg-white border-2 border-orange-300 rounded-xl outline-none focus:border-orange-500 text-lg font-bold text-orange-600"
+                  value={formData.deposit_amount}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      deposit_amount: Number(e.target.value),
+                    })
+                  }
+                />
               </div>
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-blue-900 uppercase tracking-wider">
-                  Tổng cộng:
-                </span>
-                <span className="text-2xl font-black text-blue-600">
-                  {(
-                    (rooms.find((r) => r.id === formData.roomId)?.price || 0) *
-                    calculateNights(formData.checkIn, formData.checkOut)
-                  ).toLocaleString()}{" "}
-                  VNĐ
-                </span>
+
+              {/* Bảng tính tiền chi tiết */}
+              <div className="bg-blue-600 p-6 rounded-2xl text-white shadow-xl space-y-4">
+                <div className="flex justify-between items-center border-b border-blue-400 pb-3">
+                  <span className="text-blue-100 italic">
+                    Tổng tiền (
+                    {calculateNights(formData.checkIn, formData.checkOut)} đêm):
+                  </span>
+                  <span className="font-bold text-xl">
+                    {(
+                      (rooms.find((r) => r.id === formData.roomId)?.price ||
+                        0) *
+                      calculateNights(formData.checkIn, formData.checkOut)
+                    ).toLocaleString()}{" "}
+                    VNĐ
+                  </span>
+                </div>
+                <div className="flex justify-between items-center border-b border-blue-400 pb-3">
+                  <span className="text-blue-100 italic">
+                    Khách đã đặt cọc:
+                  </span>
+                  <span className="font-bold text-xl text-orange-300">
+                    -{(formData.deposit_amount || 0).toLocaleString()} VNĐ
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pt-2">
+                  <span className="font-black uppercase tracking-widest">
+                    Còn lại cần thu:
+                  </span>
+                  <span className="text-3xl font-black text-yellow-300">
+                    {(
+                      (rooms.find((r) => r.id === formData.roomId)?.price ||
+                        0) *
+                        calculateNights(formData.checkIn, formData.checkOut) -
+                      (formData.deposit_amount || 0)
+                    ).toLocaleString()}{" "}
+                    VNĐ
+                  </span>
+                </div>
               </div>
             </div>
           )}
 
-          <div className="flex gap-3 pt-4 border-t sticky bottom-0 bg-white">
+          {/* FOOTER NÚT BẤM */}
+          <div className="flex gap-3 pt-6 sticky bottom-0 bg-white">
             <button
               type="submit"
               disabled={loading || !formData.roomId}
-              className="flex-1 py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 transition-all shadow-lg shadow-blue-200"
+              className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black text-lg hover:bg-blue-700 disabled:opacity-50 transition-all shadow-lg shadow-blue-200 uppercase"
             >
               {loading ? "Đang xử lý..." : "Xác Nhận Đặt Phòng"}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="px-8 py-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200"
+              className="px-8 py-4 bg-gray-100 text-gray-700 rounded-2xl font-bold hover:bg-gray-200 transition-colors"
             >
               Hủy
             </button>
