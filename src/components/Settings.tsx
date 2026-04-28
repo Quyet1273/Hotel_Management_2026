@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, Globe, Lock, Palette, Save, Moon, Sun, Volume2, Check, ChevronRight } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { User } from '@supabase/supabase-js';
 import { useSettings } from '../context/SettingsContext';
 
 // --- 1. Định nghĩa các Kiểu dữ liệu (Interfaces) ---
@@ -46,6 +48,33 @@ const Toggle: React.FC<ToggleProps> = ({ enabled, onChange }) => (
 // --- 3. Component chính: Settings ---
 export function Settings() {
   const { updateSettings, t } = useSettings();
+  const [user, setUser] = useState<User | null>(null);
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      setUser(currentUser);
+    };
+    getUser();
+  }, []);
+
+  //
+  useEffect(() => {
+    const fetchSettings = async () => {
+      if (!user) return; // Chỉ fetch khi đã có user_id
+
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('settings')
+        .eq('user_id', user.id) // Bây giờ user.id đã tồn tại
+        .single();
+
+      if (data && data.settings) {
+        setSettings(data.settings);
+      }
+    };
+
+    fetchSettings();
+  }, [user]); // dependency array có user là đúng rồi, giờ nó đã hết lỗi
 
   // Khởi tạo state từ LocalStorage (Sửa lỗi cú pháp return của bạn)
   const [settings, setSettings] = useState<SettingsState>(() => {
@@ -83,12 +112,29 @@ export function Settings() {
     }));
   };
 
-  const handleSave = () => {
+const handleSave = async () => {
+  try {
+    // 1. Lưu LocalStorage (để dùng nhanh)
     localStorage.setItem('app-settings', JSON.stringify(settings));
-    // Cập nhật lên Context để đồng bộ toàn app ngay lập tức
+
+    // 2. Lưu lên Supabase (Sử dụng upsert để thêm mới hoặc cập nhật)
+    const { error } = await supabase
+      .from('user_settings')
+      .upsert({ 
+        user_id: user?.id, // ID của user/employee hiện tại
+        settings: settings,
+        updated_at: new Date()
+      });
+
+    if (error) throw error;
+
     updateSettings(settings); 
-    alert(t('settings.api_note') || 'Cài đặt đã được lưu thành công!');
-  };
+    alert('Cài đặt đã được đồng bộ lên hệ thống!');
+  } catch (err) {
+    console.error(err);
+    alert('Lỗi lưu cài đặt!');
+  }
+};
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500">

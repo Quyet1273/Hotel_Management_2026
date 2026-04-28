@@ -88,21 +88,39 @@ export const inventoryService = {
     }
   },
 
-  // 4. Lấy lịch sử giao dịch
-async getTransactions() {
-  try {
-    const { data, error } = await supabase
-      .from('v_inventory_history')
-      .select('*')
-      // Thêm dòng này để luôn hiện giao dịch mới nhất lên trên cùng
-      .order('created_at', { ascending: false }); 
-      
-    if (error) throw error;
-    return { success: true, data };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-},
+// 4. Lấy lịch sử giao dịch (Đã thêm Filter & Pagination)
+  async getTransactions(startDate?: string, endDate?: string, page: number = 1, pageSize: number = 10) {
+    try {
+      // Tính toán tọa độ phân trang
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      // Khởi tạo query từ View (để lấy đủ tên vật tư, đơn vị...)
+      let query = supabase
+        .from('v_inventory_history')
+        .select('*', { count: 'exact' }); // Lấy count để làm pagination
+
+      // Áp dụng lọc theo ngày (gte: lớn hơn hoặc bằng, lte: nhỏ hơn hoặc bằng)
+      if (startDate && endDate) {
+        query = query.gte('created_at', startDate).lte('created_at', endDate);
+      }
+
+      // Sắp xếp mới nhất lên đầu và giới hạn range
+      const { data, count, error } = await query
+        .order('created_at', { ascending: false })
+        .range(from, to);
+        
+      if (error) throw error;
+
+      return { 
+        success: true, 
+        data, 
+        total: count || 0 // Trả về tổng số dòng để UI chia trang
+      };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
 // 5. Cập nhật thông tin vật tư (Dùng để chỉnh sửa tên, đơn vị, giá cả, v.v.)
 // 1. Cập nhật vật tư
 async updateItem(id: string, updates: any) {

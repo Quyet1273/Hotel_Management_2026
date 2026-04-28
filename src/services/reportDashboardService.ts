@@ -10,6 +10,7 @@ import {
   eachHourOfInterval,
   isSameDay
 } from "date-fns";
+import { useState } from "react";
 import { vi } from "date-fns/locale";
 
 export const reportService = {
@@ -22,6 +23,7 @@ export const reportService = {
 
       const prevEndDate = start.toISOString();
       const prevStartDate = subDays(start, daysDiff).toISOString();
+      // Reset trang về 1 mỗi khi đổi bộ lọc để tránh lỗi "trang trống"
 
       const [currInv, currExp, currBook, prevInv, prevExp, prevBook, roomsCount] = await Promise.all([
         // Thêm select discount_amount vào đây
@@ -76,6 +78,7 @@ export const reportService = {
       return { success: false, error: error.message };
     }
   },
+  
 
   // 2. Trạng thái phòng (Giữ nguyên)
   async getRoomStats() {
@@ -148,4 +151,5 @@ export const reportService = {
       return { success: false, error: error.message };
     }
   },
+
 };

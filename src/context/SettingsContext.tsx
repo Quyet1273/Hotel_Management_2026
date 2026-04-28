@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { settingsService, SettingsState } from '../services/settingsService';
+import { settingsService, SettingsState,  } from '../services/settingsService';
 
 // --- 1. BỘ TỪ ĐIỂN ĐẦY ĐỦ (Dùng cho hàm t) ---
 export const translations: any = {
@@ -15,18 +15,18 @@ export const translations: any = {
       total_items: "TỔNG MẶT HÀNG", out_of_stock: "SẮP HẾT HÀNG", history_log: "LỊCH SỬ GIAO DỊCH",
       inventory_value: "GIÁ TRỊ KHO", tab_stock: "TỒN KHO", tab_history: "LỊCH SỬ", search_placeholder: "Tìm tên vật tư...",
       filter_all: "Tất cả danh mục", col_name: "TÊN VẬT TƯ", col_category: "DANH MỤC", col_stock: "TỒN KHO",
-      col_price: "ĐƠN GIÁ", col_action: "THAO TÁC", tab_pending: "CHỜ DUYỆT", tab_checkin: "NHẬN PHÒNG",
-      tab_checkout: "TRẢ PHÒNG", housekeeping_title: "BUỒNG PHÒNG", housekeeping_subtitle: "Quản lý vệ sinh & trạng thái phòng",
-      dirty_rooms: "PHÒNG BẨN", cleaning_rooms: "ĐANG DỌN", clean_status: "SẠCH SẼ 100%", 
-      clean_desc: "Hiện tại không có phòng nào cần dọn dẹp.", min_stock: "Min:",
-      items: { toothbrush: "Bàn chải đánh răng (loại 1 lần)", razor_kit: "Dao cạo râu + Kem cạo râu", unit_pcs: "Cái", unit_set: "Bộ" },
+      col_price: "ĐƠN GIÁ", col_action: "THAO TÁC", min_stock: "Min:",
+      items: { toothbrush: "Bàn chải đánh răng", razor_kit: "Dao cạo râu", unit_pcs: "Cái", unit_set: "Bộ" },
       categories: { amenities: "AMENITIES" }
     },
     booking: {
-      title: "Quản Lý Đặt Phòng", subtitle: "Dữ liệu từ hệ thống", btn_add: "Đặt Phòng Mới", search_placeholder: "Tìm mã, khách hàng, số phòng...",
+      title: "Quản Lý Đặt Phòng", subtitle: "Dữ liệu từ hệ thống", btn_add: "Đặt Phòng Mới", search_placeholder: "Tìm mã...",
       filter_status: "Tất cả trạng thái", col_id: "MÃ BOOKING", col_customer: "KHÁCH HÀNG", col_room: "PHÒNG",
-      col_time: "THỜI GIAN (IN/OUT)", col_total: "TỔNG TIỀN", col_status: "TRẠNG THÁI", col_action: "THAO TÁC",
-      btn_detail: "Chi tiết", btn_checkout: "Trả phòng"
+      col_time: "THỜI GIAN", col_total: "TỔNG TIỀN", col_status: "TRẠNG THÁI", col_action: "THAO TÁC",
+      btn_detail: "Chi tiết", btn_checkout: "Trả phòng",
+      tab_pending: "CHỜ DUYỆT", tab_checkin: "NHẬN PHÒNG", tab_checkout: "TRẢ PHÒNG", // Đưa về đúng chỗ
+      housekeeping_title: "BUỒNG PHÒNG", housekeeping_subtitle: "Quản lý vệ sinh",
+      dirty_rooms: "PHÒNG BẨN", cleaning_rooms: "ĐANG DỌN", clean_status: "SẠCH SẼ 100%", clean_desc: "Không có phòng cần dọn."
     },
     service: {
       title: "DANH MỤC DỊCH VỤ", subtitle: "Quản lý menu ăn uống, giặt ủi và các tiện ích HotelPro", btn_add: "THÊM DỊCH VỤ",
@@ -85,21 +85,22 @@ export const translations: any = {
       cost: "Costs", room: "Rooms", report: "Reports", profile: "Profile", settings: "Settings", logout: "Logout"
     },
     inventory: {
-      title: "INVENTORY MANAGEMENT", subtitle: "Stock control for HotelPro", btn_add_category: "ADD CATEGORY",
-      total_items: "TOTAL ITEMS", out_of_stock: "LOW STOCK", history_log: "TRANSACTION HISTORY",
-      inventory_value: "INVENTORY VALUE", tab_stock: "STOCK", tab_history: "HISTORY", search_placeholder: "Search items...",
-      filter_all: "All Categories", col_name: "ITEM NAME", col_category: "CATEGORY", col_stock: "STOCK",
-      col_price: "UNIT PRICE", col_action: "ACTIONS", min_stock: "Min:",
-      items: { toothbrush: "Disposable toothbrush", razor_kit: "Razor + Shaving cream", unit_pcs: "Pcs", unit_set: "Set" },
+      title: "INVENTORY MANAGEMENT", subtitle: "Stock control", add_category: "ADD CATEGORY", // Sửa btn_add_category -> add_category
+      total_items: "TOTAL ITEMS", out_of_stock: "LOW STOCK", history_log: "HISTORY",
+      inventory_value: "VALUE", tab_stock: "STOCK", tab_history: "HISTORY", search_placeholder: "Search...",
+      filter_all: "All", col_name: "NAME", col_category: "CATEGORY", col_stock: "STOCK",
+      col_price: "PRICE", col_action: "ACTIONS", min_stock: "Min:",
+      items: { toothbrush: "Toothbrush", razor_kit: "Razor", unit_pcs: "Pcs", unit_set: "Set" },
       categories: { amenities: "AMENITIES" }
     },
     booking: {
-      title: "Booking Management", subtitle: "System data", btn_add: "New Booking", search_placeholder: "Search code, guest, room...",
-      filter_status: "All Statuses", col_id: "BOOKING CODE", col_customer: "CUSTOMER", col_room: "ROOM",
-      col_time: "DURATION (IN/OUT)", col_total: "TOTAL AMOUNT", col_status: "STATUS", col_action: "ACTIONS",
-      btn_detail: "Details", btn_checkout: "Check-out", tab_pending: "PENDING", tab_checkin: "CHECK-IN", tab_checkout: "CHECK-OUT",
-      housekeeping_title: "HOUSEKEEPING", housekeeping_subtitle: "Manage room cleaning & status", dirty_rooms: "DIRTY ROOMS",
-      cleaning_rooms: "CLEANING", clean_status: "100% CLEAN", clean_desc: "There are currently no rooms that need cleaning."
+      title: "Booking Management", subtitle: "System data", btn_add: "New Booking", search_placeholder: "Search...",
+      filter_status: "All Statuses", col_id: "ID", col_customer: "CUSTOMER", col_room: "ROOM",
+      col_time: "TIME", col_total: "TOTAL", col_status: "STATUS", col_action: "ACTIONS",
+      btn_detail: "Details", btn_checkout: "Check-out",
+      tab_pending: "PENDING", tab_checkin: "CHECK-IN", tab_checkout: "CHECK-OUT",
+      housekeeping_title: "HOUSEKEEPING", housekeeping_subtitle: "Manage cleaning",
+      dirty_rooms: "DIRTY", cleaning_rooms: "CLEANING", clean_status: "100% CLEAN", clean_desc: "No rooms to clean."
     },
     service: {
       title: "SERVICE CATEGORY", subtitle: "Manage F&B menu, laundry, and HotelPro utilities", btn_add: "ADD SERVICE",
@@ -161,19 +162,34 @@ interface SettingsContextType {
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
-
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
-  const [settings, setSettings] = useState<any>({ language: 'vi', theme: 'light', primaryColor: 'blue' });
+  // State khởi tạo mặc định chắc chắn có language: 'vi'
+  const [settings, setSettings] = useState<any>({ 
+    language: 'vi', 
+    theme: 'light', 
+    primaryColor: 'blue',
+    notifications: { email: true, push: true, bookingAlerts: true }
+  });
   const [loading, setLoading] = useState(true);
 
+  // 1. Init: Lấy dữ liệu từ Supabase và MERGE
   useEffect(() => {
     const init = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const res = await settingsService.getUserSettings(user.id);
-          if (res.success && res.data) setSettings(res.data);
+          if (res.success && res.data) {
+            setSettings((prev: any) => ({
+              ...prev,
+              ...res.data,
+              // Nếu trong DB thiếu field language thì vẫn giữ 'vi' của prev
+              language: res.data.language || prev.language || 'vi' 
+            }));
+          }
         }
+      } catch (err) {
+        console.error("Settings Init Error:", err);
       } finally {
         setLoading(false);
       }
@@ -181,26 +197,41 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     init();
   }, []);
 
+  // 2. Update: Lưu cả State và Database
   const updateSettings = async (newSettings: Partial<SettingsState>) => {
-    const updated = { ...settings, ...newSettings };
-    setSettings(updated);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) await settingsService.saveUserSettings(user.id, updated as SettingsState);
+    setSettings((prev: any) => {
+      const updated = { ...prev, ...newSettings };
+      
+      // Lưu vào Supabase (async)
+      const syncDb = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await settingsService.saveUserSettings(user.id, updated as SettingsState);
+        }
+      };
+      syncDb();
+
+      return updated;
+    });
   };
 
-  const t = (path: string): string => {
+  // 3. Hàm dịch t: Chống lỗi undefined language
+  const t = useCallback((path: string): string => {
     const keys = path.split('.');
-    let result = translations[settings.language || 'vi'];
+    const currentLang = settings.language || 'vi';
+    let result = translations[currentLang];
     
     for (const key of keys) {
-      if (result && result[key]) {
+      if (result && result[key] !== undefined) {
         result = result[key];
       } else {
-        return path; // Trả về path nếu không tìm thấy key để debug
+        // Trả về path để dễ debug xem key nào đang bị thiếu hoặc sai chỗ
+        console.warn(`Translation missing: ${path} in [${currentLang}]`);
+        return path; 
       }
     }
     return result;
-  };
+  }, [settings.language]); // Chỉ tính toán lại khi language thay đổi
 
   return (
     <SettingsContext.Provider value={{ settings, updateSettings, t, loading }}>
