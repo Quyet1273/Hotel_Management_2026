@@ -1,15 +1,20 @@
 import { useState, useEffect } from 'react';
-import { Users, Plus, Search, Mail, Phone, MapPin, Loader2, Edit2, Trash2 } from 'lucide-react';
+import { Users, Plus, Search, Mail, Phone, MapPin, Loader2, Edit2, Trash2, Eye } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { GuestForm } from '../modal/GuestForm';
+import { GuestDetailDrawer } from '../modal/GuestDetailDrawer'; // Bổ sung import Drawer
 import { toast } from 'sonner';
 
 export function GuestManagement() {
   const [guests, setGuests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // State cho Modal tạo mới
   const [showForm, setShowForm] = useState(false);
-  const [editingGuest, setEditingGuest] = useState<any>(null);
+  
+  // State MỚI: Dành cho Drawer chi tiết khách hàng
+  const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
 
   const fetchGuests = async () => {
     setLoading(true);
@@ -36,11 +41,6 @@ export function GuestManagement() {
     }
   };
 
-  const handleEdit = (guest: any) => {
-    setEditingGuest(guest);
-    setShowForm(true);
-  };
-
   const filteredGuests = guests.filter(guest => 
     guest.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     guest.phone?.includes(searchTerm) ||
@@ -50,7 +50,7 @@ export function GuestManagement() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-10 font-sans antialiased">
       
-      {/* HEADER BANNER - ĐỒNG BỘ NỀN VÀ FONT */}
+      {/* HEADER BANNER */}
       <div className="bg-[#D1F4FA] dark:bg-gray-800 rounded-[2rem] p-8 flex flex-col md:flex-row gap-4 justify-between md:items-center shadow-sm border border-blue-100 dark:border-gray-700">
         <div className="flex items-center gap-5">
           <div className="w-16 h-16 bg-blue-600/10 dark:bg-white/10 rounded-2xl flex items-center justify-center">
@@ -63,14 +63,14 @@ export function GuestManagement() {
           </div>
         </div>
         <button 
-          onClick={() => { setEditingGuest(null); setShowForm(true); }}
+          onClick={() => setShowForm(true)} // Chỉ dùng để THÊM MỚI
           className="px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-extrabold text-[13px] uppercase tracking-wider shadow-lg shadow-blue-500/30 transition-all active:scale-95 flex items-center justify-center gap-2"
         >
-          <span>+ Thêm Khách Hàng</span>
+          <Plus size={18} /> <span>Thêm Khách Hàng</span>
         </button>
       </div>
 
-      {/* TOOLBAR SEARCH - ĐỒNG BỘ 100% KIỂU DÁNG VỚI QUẦY LỄ TÂN */}
+      {/* TOOLBAR SEARCH */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
         <div className="relative flex-1">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -86,7 +86,7 @@ export function GuestManagement() {
         </div>
       </div>
 
-     {loading ? (
+      {loading ? (
         <div className="flex flex-col items-center justify-center py-20">
           <Loader2 className="animate-spin text-blue-600 mb-4" size={40} />
           <p className="text-gray-500 dark:text-gray-400 font-extrabold text-[12px] uppercase tracking-widest">Đang tải danh sách...</p>
@@ -102,7 +102,7 @@ export function GuestManagement() {
                   <Users size={28} />
                 </div>
 
-                {/* Thông tin chính - Đã thêm đường kẻ chia cột (divide-x-2) */}
+                {/* Thông tin chính */}
                 <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-0 md:divide-x-2 divide-gray-200 dark:divide-gray-600 w-full items-center">
                   
                   {/* Cột 1: Tên & ID */}
@@ -129,13 +129,13 @@ export function GuestManagement() {
 
                 </div>
 
-                {/* Nút hành động - Thêm vách ngăn bên trái */}
+                {/* Nút hành động */}
                 <div className="flex gap-3 shrink-0 border-t-2 border-gray-200 dark:border-gray-600 md:border-t-0 md:border-l-2 md:pl-6 pt-4 md:pt-0 w-full md:w-auto justify-end">
                   <button 
-                    onClick={() => handleEdit(guest)}
+                    onClick={() => setSelectedGuestId(guest.id)} // THAY ĐỔI: Mở Drawer
                     className="flex items-center gap-2 px-5 py-2.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl text-[12px] font-extrabold uppercase hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white transition-all border-2 border-blue-100 dark:border-blue-800/50"
                   >
-                    <Edit2 size={16} /> Sửa
+                    <Eye size={16} /> Chi tiết {/* Đổi Text cho phù hợp */}
                   </button>
                   <button 
                     onClick={() => handleDelete(guest.id, guest.full_name)}
@@ -153,14 +153,25 @@ export function GuestManagement() {
           )}
         </div>
       )}
-      {/* Form Modal */}
+
+      {/* MODAL TẠO MỚI (Vẫn dùng GuestForm cũ) */}
       {showForm && (
         <GuestForm 
-          initialData={editingGuest}
-          onClose={() => { setShowForm(false); setEditingGuest(null); }} 
+          initialData={null}
+          onClose={() => setShowForm(false)} 
           onSave={fetchGuests} 
         />
       )}
+
+      {/* DRAWER CHI TIẾT KHÁCH HÀNG (Mới) */}
+      {selectedGuestId && (
+        <GuestDetailDrawer
+          guestId={selectedGuestId}
+          onClose={() => setSelectedGuestId(null)}
+          onSave={fetchGuests}
+        />
+      )}
+
     </div>
   );
 }

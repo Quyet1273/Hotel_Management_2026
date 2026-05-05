@@ -9,6 +9,11 @@ export interface InvoiceData {
   service_total: number;
   total_amount: number;
   payment_method: string;
+  is_vat_invoice?: boolean;
+  company_name?: string | null;
+  tax_code?: string | null;
+  company_address?: string | null;
+  vat_amount?: number;
 }
 
 export const invoiceService = {
@@ -32,27 +37,23 @@ export const invoiceService = {
   /**
    * Lấy lịch sử hóa đơn có bộ lọc thời gian và phân trang
    */
-  getInvoiceList: async (startDate?: string, endDate?: string, page: number = 1, pageSize: number = 10) => {
+ getInvoiceList: async (startDate?: string, endDate?: string, page: number = 1, pageSize: number = 10) => {
     try {
-      // 1. Tính toán vị trí bắt đầu và kết thúc cho phân trang
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
 
-      // 2. Khởi tạo query
       let query = supabase
         .from("invoices")
         .select(`
           *,
           guests (full_name, phone),
           rooms (room_number)
-        `, { count: "exact" }); // { count: "exact" } cực kỳ quan trọng để làm Pagination
+        `, { count: "exact" });
 
-      // 3. Áp dụng bộ lọc thời gian nếu có
       if (startDate && endDate) {
         query = query.gte("created_at", startDate).lte("created_at", endDate);
       }
 
-      // 4. Sắp xếp, phân trang và thực thi
       const { data, count, error } = await query
         .order("created_at", { ascending: false })
         .range(from, to);
@@ -62,7 +63,7 @@ export const invoiceService = {
       return { 
         success: true, 
         data, 
-        total: count || 0 // Trả về tổng số dòng để UI biết đường chia trang
+        total: count || 0 
       };
     } catch (error: any) {
       return { success: false, error: error.message };

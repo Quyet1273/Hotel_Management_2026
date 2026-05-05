@@ -10,10 +10,11 @@ import {
   Area,
   XAxis,
   YAxis,
+  BarChart,
   CartesianGrid,
   Tooltip as RechartsTooltip,
 } from "recharts";
-import { Calendar, Download, TrendingUp, TrendingDown } from "lucide-react";
+import { Calendar, Download, TrendingUp, TrendingDown, BarChart3 } from "lucide-react";
 
 // --- HELPERS: Format trục Y cho biểu đồ ---
 const formatYAxis = (value: any): string => {
@@ -87,13 +88,29 @@ export function ReportDashboard() {
       try {
         // 1. GỌI ĐÚNG - ĐỦ - ĐỀU CÁC SERVICE
         const [fin, room, time, invRes, stockRes] = await Promise.all([
-          reportService.getFinancialStats(start.toISOString(), end.toISOString()),
+          reportService.getFinancialStats(
+            start.toISOString(),
+            end.toISOString(),
+          ),
           reportService.getRoomStats(),
-          reportService.getFinancialTimeSeriesData(start.toISOString(), end.toISOString()),
+          reportService.getFinancialTimeSeriesData(
+            start.toISOString(),
+            end.toISOString(),
+          ),
           // Lấy Hóa đơn (Truyền đủ tham số)
-          invoiceService.getInvoiceList(start.toISOString(), end.toISOString(), currentPage, pageSize),
+          invoiceService.getInvoiceList(
+            start.toISOString(),
+            end.toISOString(),
+            currentPage,
+            pageSize,
+          ),
           // Lấy Kho vật tư (Truyền đủ tham số)
-          inventoryService.getTransactions(start.toISOString(), end.toISOString(), currentPage, pageSize),
+          inventoryService.getTransactions(
+            start.toISOString(),
+            end.toISOString(),
+            currentPage,
+            pageSize,
+          ),
         ]);
 
         // 2. CẬP NHẬT BIỂU ĐỒ VÀ KPI (Cái này chung cho cả 2 tab)
@@ -121,13 +138,12 @@ export function ReportDashboard() {
           setInvoices(invRes.data || []);
           setTotalRecords(invRes.total || 0);
           // Reset data của tab kia để tránh nhầm lẫn (tùy chọn)
-          setInventoryTransactions([]); 
+          setInventoryTransactions([]);
         } else {
           setInventoryTransactions(stockRes.data || []);
           setTotalRecords(stockRes.total || 0);
           setInvoices([]);
         }
-
       } catch (error) {
         console.error("Lỗi báo cáo:", error);
       }
@@ -171,33 +187,39 @@ export function ReportDashboard() {
   return (
     <div className="space-y-6 pb-10 animate-in fade-in duration-700 font-sans antialiased text-slate-800">
       {/* 1. HEADER */}
-     <div className="flex flex-wrap justify-between items-center gap-4">
-  {/* TIÊU ĐỀ */}
-  <div>
-    <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">
-      Thống kê vận hành
-    </h2>
-    <p className="text-xs text-gray-500 font-bold italic">
-      Cập nhật lúc: {new Date().toLocaleTimeString("vi-VN")}
-    </p>
+  {/* HEADER BANNER - ĐỒNG BỘ STYLE HOTELPRO */}
+<div className="bg-[#D1F4FA] dark:bg-gray-800 rounded-[2rem] p-8 flex flex-wrap justify-between items-center shadow-sm border border-blue-100 dark:border-gray-700 gap-6">
+  
+  {/* BÊN TRÁI: ICON & TIÊU ĐỀ */}
+  <div className="flex items-center gap-5">
+    <div className="w-16 h-16 bg-blue-600/10 dark:bg-white/10 rounded-2xl flex items-center justify-center">
+      <BarChart3 className="w-8 h-8 text-blue-700 dark:text-blue-400" />
+    </div>
+    <div>
+      <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">
+        Thống kê vận hành
+      </h1>
+      <p className="text-[10px] text-blue-600/60 dark:text-gray-400 font-bold italic mt-1">
+        Cập nhật lúc: {new Date().toLocaleTimeString("vi-VN")}
+      </p>
+    </div>
   </div>
 
-  {/* BỘ LỌC TỔNG */}
-  <div className="flex flex-wrap items-center bg-white p-1.5 rounded-2xl border border-gray-100 shadow-sm gap-3">
-    
+  {/* BÊN PHẢI: BỘ LỌC TỔNG */}
+  <div className="flex flex-wrap items-center bg-white/50 dark:bg-gray-900/50 p-2 rounded-[1.5rem] border border-white dark:border-gray-700 shadow-inner gap-3">
     {/* Nút lọc nhanh */}
-    <div className="flex gap-1 bg-gray-50 p-1 rounded-xl">
+    <div className="flex gap-1 bg-gray-100/50 dark:bg-gray-800 p-1 rounded-xl">
       {["today", "7days", "30days", "custom"].map((opt) => (
         <button
           key={opt}
           onClick={() => {
             setAppliedFilter(opt);
-            setCurrentPage(1); // Reset trang mỗi khi đổi bộ lọc
+            setCurrentPage(1);
           }}
           className={`px-5 py-2 rounded-xl text-[11px] font-black uppercase transition-all ${
-            appliedFilter === opt 
-            ? "bg-blue-600 text-white shadow-lg shadow-blue-200" 
-            : "text-gray-400 hover:bg-white hover:shadow-sm"
+            appliedFilter === opt
+              ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+              : "text-gray-500 hover:bg-white dark:hover:bg-gray-700 hover:shadow-sm"
           }`}
         >
           {opt === "today" ? "Hôm nay" : opt === "7days" ? "7 Ngày" : opt === "30days" ? "30 Ngày" : "Lịch"}
@@ -207,22 +229,23 @@ export function ReportDashboard() {
 
     {/* PHẦN CHỌN LỊCH CHI TIẾT (Chỉ hiện khi chọn 'custom') */}
     {appliedFilter === "custom" && (
-      <div className="flex items-center gap-2 px-2 border-l border-gray-100 animate-in slide-in-from-right duration-500">
-        {/* Dropdown chọn kiểu: Ngày hoặc Tháng */}
-        <select 
+      <div className="flex items-center gap-2 px-2 border-l border-blue-200 dark:border-gray-600 animate-in fade-in slide-in-from-right duration-300">
+        <select
           value={customType}
           onChange={(e) => {
             setCustomType(e.target.value as any);
-            // Reset giá trị ngày tương ứng với type để tránh lỗi format
-            setSelectedDate(e.target.value === "month" ? new Date().toISOString().slice(0, 7) : new Date().toISOString().split('T')[0]);
+            setSelectedDate(
+              e.target.value === "month"
+                ? new Date().toISOString().slice(0, 7)
+                : new Date().toISOString().split("T")[0],
+            );
           }}
-          className="bg-gray-50 border-none text-[10px] font-black uppercase outline-none focus:ring-2 ring-blue-500 rounded-xl px-3 py-2 text-blue-600 cursor-pointer"
+          className="bg-white dark:bg-gray-800 border-none text-[10px] font-black uppercase outline-none focus:ring-2 ring-blue-500 rounded-xl px-3 py-2 text-blue-600 cursor-pointer shadow-sm"
         >
           <option value="date">Theo Ngày</option>
           <option value="month">Theo Tháng</option>
         </select>
 
-        {/* Input chọn thời gian: Tự động đổi type="date" hoặc type="month" */}
         <input
           type={customType}
           value={selectedDate}
@@ -230,7 +253,7 @@ export function ReportDashboard() {
             setSelectedDate(e.target.value);
             setCurrentPage(1);
           }}
-          className="bg-gray-50 border-none text-[11px] font-black uppercase outline-none focus:ring-2 ring-blue-500 rounded-xl px-4 py-2 text-gray-700"
+          className="bg-white dark:bg-gray-800 border-none text-[11px] font-black uppercase outline-none focus:ring-2 ring-blue-500 rounded-xl px-4 py-2 text-gray-700 dark:text-gray-200 shadow-sm"
         />
       </div>
     )}

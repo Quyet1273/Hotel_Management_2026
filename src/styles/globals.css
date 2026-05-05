@@ -2,7 +2,53 @@
 
 /* Các code cũ của bạn giữ nguyên ở bên dưới... */
 @custom-variant dark (&:is(.dark *));
+@media print {
+    /* 1. Ẩn toàn bộ trang web, chỉ hiện vùng ID printable-invoice */
+    body * { visibility: hidden; }
+    #printable-invoice, #printable-invoice * { visibility: visible !important; }
 
+    /* 2. Ép vùng in tràn ra hết trang giấy và không bị cắt chiều cao */
+    #printable-invoice {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100% !important;
+      height: auto !important;
+      overflow: visible !important;
+      display: block !important;
+      background: white !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    /* 3. Ép trình duyệt in cả màu nền và hình ảnh (QUAN TRỌNG ĐỂ HIỆN QR) */
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    /* 4. Đảm bảo ảnh QR hiện ra và không bị ẩn bởi các class khác */
+    img { 
+      display: block !important; 
+      max-width: 100%;
+    }
+
+    /* 5. Ẩn nút bấm và các thành phần không cần thiết trên tờ giấy in */
+    .no-print, .print-hide, button, .no-print-visible { 
+      display: none !important; 
+    }
+
+    /* Loại bỏ lề mặc định của trình duyệt để in sát lề giấy */
+    @page {
+      margin: 0.5cm;
+    }
+  }
+
+  /* Ẩn thanh cuộn khi xem trên màn hình để nhìn cho mượt */
+  ::-webkit-scrollbar {
+    display: none;
+  }
 :root {
   --font-size: 16px;
   --background: #EDF9FC;

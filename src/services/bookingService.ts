@@ -1,4 +1,6 @@
 import { supabase } from "../lib/supabase";
+
+// 2. Cập nhật Interface Booking (Thêm surcharge_total và actual_received)
 export interface Booking {
   id?: string;
   guest_id: string;
@@ -6,9 +8,10 @@ export interface Booking {
   check_in_date: string;
   check_out_date: string;
   status: "pending" | "confirmed" | "checked_in" | "checked_out" | "cancelled";
-  total_amount: number;
-  deposit_amount: number;
-  notes?: string;
+  total_amount: number;      // Tổng tiền (Phòng + Thuế)
+  deposit_amount: number;    // Tiền cọc
+  actual_received: number;   // Thực thu (GrandTotal - Cọc)
+  notes?: string;            // Ghi chú
   created_at?: string;
   updated_at?: string;
 }
@@ -35,59 +38,36 @@ export const bookingService = {
     }
   },
 
-  // 2. Tạo mới một đặt phòng
-  // 2. Tạo mới một đặt phòng (Bản gia cố bắt lỗi)
+  // 2. Tạo mới một đặt phòng 
+// 2. Tạo mới một đặt phòng (Đã gỡ bỏ hoàn toàn luồng Phụ phí cũ)
   createBooking: async (booking: any) => {
-    // In ra gói hàng trước khi gửi để check ID và Ngày tháng
+    // Log gói hàng tổng quát
     console.log(
       "%c [PAYLOAD GỬI ĐI]:",
       "color: #8b5cf6; font-weight: bold;",
-      booking,
+      { booking },
     );
 
     try {
-      const { data, error } = await supabase
+      // --- CHỈ CẦN NỔ ĐƠN VÀO BẢNG BOOKINGS LÀ XONG ---
+      const { data: bookingData, error: bookingError } = await supabase
         .from("bookings")
         .insert([booking])
         .select();
 
-      if (error) {
-        // IN CHI TIẾT LỖI TỪ DATABASE - KHÔNG CẦN ĐOÁN MÒ NỮA
-        console.error(
-          "%c [LỖI SQL CREATE]:",
-          "color: #ef4444; font-weight: bold;",
-          {
-            mã_lỗi: error.code,
-            nội_dung: error.message,
-            chi_tiết: error.details,
-            gợi_ý: error.hint,
-          },
-        );
-        throw error;
+      if (bookingError) {
+        console.error("%c [LỖI SQL CREATE BOOKING]:", "color: #ef4444; font-weight: bold;", {
+          mã_lỗi: bookingError.code,
+          nội_dung: bookingError.message,
+          chi_tiết: bookingError.details,
+        });
+        throw bookingError;
       }
 
-      console.log(
-        "%c [SUCCESS] Đã nổ đơn thành công! ID đơn:",
-        "color: #10b981; font-weight: bold;",
-        data[0]?.id,
-      );
-      return { success: true, data };
-    } catch (error: any) {
-      return { success: false, error: error.message };
-    }
-  },
+      const newBookingId = bookingData[0]?.id;
+      console.log("%c [SUCCESS] Đã nổ đơn bookings! ID:", "color: #10b981; font-weight: bold;", newBookingId);
 
-  // 3. Cập nhật thông tin đặt phòng (ví dụ: đổi ngày, đổi trạng thái)
-  updateBooking: async (id: string, updates: Partial<Booking>) => {
-    try {
-      const { data, error } = await supabase
-        .from("bookings")
-        .update(updates)
-        .eq("id", id)
-        .select();
-
-      if (error) throw error;
-      return { success: true, data };
+      return { success: true, data: bookingData };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
@@ -171,5 +151,37 @@ export const bookingService = {
     .or(`check_in_date.ilike.%${today}%,check_out_date.ilike.%${today}%`);
 
   return data || [];
-}
+},
+// 7. Hàm lấy chi tiết khách hàng mới thêm vào đây:
+  getGuestWithHistory: async (guestId: string) => {
+    try {
+      const { data: guest, error: guestError } = await supabase
+        .from("guests")
+        .select("*")
+        .eq("id", guestId)
+        .single();
+
+      if (guestError) throw guestError;
+
+      const { data: history, error: historyError } = await supabase
+        .from("bookings")
+        .select(`
+          id, check_in_date, check_out_date, status, total_amount, actual_received,
+          rooms (room_number)
+        `)
+        .eq("guest_id", guestId)
+        .order("created_at", { ascending: false });
+
+      if (historyError) throw historyError;
+
+      const totalSpent = history
+        ?.filter(b => b.status === "checked_out" || b.status === "confirmed" || b.status === "checked_in")
+        .reduce((sum, booking) => sum + (Number(booking.total_amount) || 0), 0) || 0;
+
+      return { success: true, guest, history, totalSpent };
+    } catch (error: any) {
+      console.error("Lỗi lấy chi tiết khách hàng:", error);
+      return { success: false, error: error.message };
+    }
+  }
 };

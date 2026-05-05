@@ -276,7 +276,7 @@ export const chatbotService = {
 
       const chatCompletion = await groq.chat.completions.create({
         messages: [systemPrompt, ...formattedHistory] as any,
-        model: "llama-3.3-70b-versatile",
+        model: "llama-3.1-8b-instant",
         temperature: 0.1, // Cực kỳ thấp để AI KHÔNG bịa chuyện, chỉ đọc data
       });
 

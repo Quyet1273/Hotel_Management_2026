@@ -8,6 +8,8 @@ import {
   Receipt,
   LogOut,
   BookmarkCheck,
+  ChevronDown,
+  X,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { BookingForm } from "./BookingForm";
@@ -34,47 +36,59 @@ export function BookingManagement() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterDate, setFilterDate] = useState(""); // Lưu giá trị YYYY-MM-DD
   const [activeTab, setActiveTab] = useState("confirmed");
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(
     null,
   );
-const handleUpdateStatus = async (bookingId: string, newStatus: string) => {
-  setLoading(true);
-  try {
-    // 1. Tìm xem đơn này đặt phòng nào
-    const { data: bokingInfo } = await supabase
-      .from("bookings")
-      .select("room_id").eq("id", bookingId).single();
+  const handleUpdateStatus = async (bookingId: string, newStatus: string) => {
+    setLoading(true);
+    try {
+      // 1. Tìm xem đơn này đặt phòng nào
+      const { data: bokingInfo } = await supabase
+        .from("bookings")
+        .select("room_id")
+        .eq("id", bookingId)
+        .single();
 
-    if (!bokingInfo) return;
+      if (!bokingInfo) return;
 
-    // 2. CHẶN ĐỨNG: Kiểm tra trạng thái thực tế của phòng NGAY BÂY GIỜ
-    if (newStatus === "checked_in") {
-      const { data: room } = await supabase
-        .from("rooms")
-        .select("status").eq("id", bokingInfo.room_id).single();
+      // 2. CHẶN ĐỨNG: Kiểm tra trạng thái thực tế của phòng NGAY BÂY GIỜ
+      if (newStatus === "checked_in") {
+        const { data: room } = await supabase
+          .from("rooms")
+          .select("status")
+          .eq("id", bokingInfo.room_id)
+          .single();
 
-      if (room?.status !== "available") {
-        toast.error("PHÒNG ĐANG CÓ NGƯỜI! Đừng có làm liều đại ca!");
-        return; // DỪNG LUÔN TẠI ĐÂY
+        if (room?.status !== "available") {
+          toast.error("PHÒNG ĐANG CÓ KHÁCH THUÊ!");
+          return; // DỪNG LUÔN TẠI ĐÂY
+        }
       }
+
+      // 3. Nếu OK thì mới update đồng thời cả 2 bảng
+      await supabase
+        .from("bookings")
+        .update({ status: newStatus })
+        .eq("id", bookingId);
+
+      const nextRoomStatus =
+        newStatus === "checked_in" ? "occupied" : "cleaning";
+      await supabase
+        .from("rooms")
+        .update({ status: nextRoomStatus })
+        .eq("id", bokingInfo.room_id);
+
+      toast.success("Xong! Đã khóa phòng an toàn.");
+      fetchBookings(); // Load lại để nút xám đi ngay lập tức
+    } catch (e) {
+      toast.error("Lỗi rồi!");
+    } finally {
+      setLoading(false);
     }
-
-    // 3. Nếu OK thì mới update đồng thời cả 2 bảng
-    await supabase.from("bookings").update({ status: newStatus }).eq("id", bookingId);
-    
-    const nextRoomStatus = newStatus === "checked_in" ? "occupied" : "cleaning";
-    await supabase.from("rooms").update({ status: nextRoomStatus }).eq("id", bokingInfo.room_id);
-
-    toast.success("Xong! Đã khóa phòng an toàn.");
-    fetchBookings(); // Load lại để nút xám đi ngay lập tức
-  } catch (e) {
-    toast.error("Lỗi rồi!");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
   // 2. Hàm lấy dữ liệu thật từ Supabase (ĐÃ THÊM STATUS PHÒNG)
   const fetchBookings = async () => {
     setLoading(true);
@@ -112,15 +126,29 @@ const handleUpdateStatus = async (bookingId: string, newStatus: string) => {
     const roomNum = booking.rooms?.room_number || "";
     const search = searchTerm.toLowerCase();
 
+    // A. Điều kiện Tìm kiếm
     const searchMatch =
       booking.id.toLowerCase().includes(search) ||
       guestName.includes(search) ||
       guestPhone.includes(search) ||
       roomNum.includes(search);
 
+    // B. Điều kiện Trạng thái
     const statusMatch =
       filterStatus === "all" || booking.status === filterStatus;
-    return searchMatch && statusMatch;
+
+    // C. Điều kiện Thời gian (Sử dụng đúng trường check_in_date từ interface)
+   let dateMatch = true;
+  if (filterDate) {
+    // Chuyển đổi check_in_date về định dạng YYYY-MM-DD theo giờ địa phương
+    const localBookingDate = booking.check_in_date 
+      ? new Date(booking.check_in_date).toLocaleDateString('en-CA') // 'en-CA' luôn cho ra định dạng YYYY-MM-DD
+      : "";
+    
+    dateMatch = localBookingDate === filterDate;
+  }
+
+  return searchMatch && statusMatch && dateMatch;
   });
 
   const getStatusStyle = (status: string) => {
@@ -160,10 +188,11 @@ const handleUpdateStatus = async (bookingId: string, newStatus: string) => {
         </button>
       </div>
 
-      {/* BỘ LỌC HIỆN ĐẠI - ĐỒNG BỘ UI SEARCH */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 flex flex-wrap gap-4 shadow-sm">
-        <div className="flex-1 relative min-w-[250px]">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+      {/* BỘ LỌC HIỆN ĐẠI: TÌM KIẾM - THỜI GIAN - TRẠNG THÁI */}
+      <div className="bg-white dark:bg-gray-800 rounded-[2rem] border-2 border-gray-100 dark:border-gray-700 p-5 flex flex-col md:flex-row items-center gap-4 shadow-sm mb-6">
+        {/* 1. TÌM KIẾM (Chiếm diện tích lớn nhất) */}
+        <div className="flex-[2] relative min-w-[300px] flex items-center">
+          <div className="absolute left-4 inset-y-0 flex items-center pointer-events-none">
             <Search className="w-5 h-5 text-gray-400" />
           </div>
           <input
@@ -171,15 +200,38 @@ const handleUpdateStatus = async (bookingId: string, newStatus: string) => {
             placeholder="Tìm mã booking, tên khách, số phòng..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-3.5 bg-gray-50 dark:bg-gray-900/80 border-2 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white rounded-2xl focus:border-blue-500 dark:focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-4 focus:ring-blue-500/10 transition-all font-semibold outline-none text-[15px]"
+            className="w-full pl-12 pr-4 py-3.5 bg-gray-50 dark:bg-gray-900/80 border-2 border-transparent focus:border-blue-500 rounded-2xl font-bold outline-none text-[15px] transition-all text-gray-900 dark:text-white"
           />
         </div>
-        <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-900/80 px-4 py-2 rounded-2xl border-2 border-gray-200 dark:border-gray-600 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10 transition-all">
+
+        {/* 2. LỌC THEO THỜI GIAN (NGÀY) */}
+        <div className="flex-1 min-w-[200px] relative flex items-center bg-gray-50 dark:bg-gray-900/80 px-4 py-3.5 rounded-2xl border-2 border-transparent focus-within:border-blue-500 transition-all">
+          <div className="flex items-center pointer-events-none">
+            <Calendar size={18} className="text-gray-400" />
+          </div>
+          <input
+            type="date"
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
+            className="bg-transparent flex-1 ml-3 text-[13px] font-extrabold uppercase tracking-wide text-gray-700 dark:text-gray-200 outline-none cursor-pointer"
+          />
+          {filterDate && (
+            <button
+              onClick={() => setFilterDate("")}
+              className="ml-1 text-gray-400 hover:text-rose-500 transition-colors"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+
+        {/* 3. TRẠNG THÁI */}
+        <div className="flex-1 min-w-[200px] relative flex items-center bg-gray-50 dark:bg-gray-900/80 px-4 py-3.5 rounded-2xl border-2 border-transparent focus-within:border-blue-500 transition-all">
           <Filter size={18} className="text-gray-400" />
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="bg-transparent py-1.5 text-[13px] font-extrabold uppercase tracking-wide text-gray-700 dark:text-gray-200 outline-none cursor-pointer appearance-none"
+            className="flex-1 bg-transparent ml-3 text-[13px] font-extrabold uppercase tracking-wide text-gray-700 dark:text-gray-200 outline-none cursor-pointer appearance-none pr-8"
           >
             <option value="all">Tất cả trạng thái</option>
             <option value="pending">Chờ xác nhận</option>
@@ -187,6 +239,9 @@ const handleUpdateStatus = async (bookingId: string, newStatus: string) => {
             <option value="checked_in">Đã nhận phòng</option>
             <option value="checked_out">Đã trả phòng</option>
           </select>
+          <div className="absolute right-4 inset-y-0 flex items-center pointer-events-none">
+            <ChevronDown size={16} className="text-gray-400" />
+          </div>
         </div>
       </div>
 

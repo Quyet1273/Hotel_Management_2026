@@ -114,27 +114,27 @@ export function RoomManagement() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-10">
       
-      {/* HEADER BANNER - CHUẨN STYLE HOTELPRO */}
-      <div style={{ 
-        backgroundColor: "#2563eb", borderRadius: "2rem", padding: "2rem", color: "#ffffff",
-        display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 10px 15px rgba(0,0,0,0.1)"
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "1.25rem" }}>
-          <div style={{ width: "4rem", height: "4rem", backgroundColor: "rgba(255, 255, 255, 0.2)", borderRadius: "1.25rem", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Home style={{ width: "2rem", height: "2rem", color: "#ffffff" }} />
-          </div>
-          <div>
-            <h1 style={{ fontSize: "1.875rem", fontWeight: "900", margin: 0, textTransform: "uppercase" }}>QUẢN LÝ PHÒNG</h1>
-            {/* <p style={{ color: "rgba(255, 255, 255, 0.8)", margin: 0 }}>Quản lý sơ đồ phòng, trạng thái và thiết lập giá HotelPro</p> */}
-          </div>
-        </div>
-        <button 
-          onClick={handleAddClick}
-          style={{ backgroundColor: "#ffffff", color: "#2563eb", padding: "0.8rem 1.5rem", borderRadius: "1rem", border: "none", fontWeight: "900", cursor: "pointer", textTransform: "uppercase", fontSize: "0.75rem" }}
-        >
-          + Thêm Phòng Mới
-        </button>
-      </div>
+    {/* HEADER BANNER - ĐỒNG BỘ STYLE VỚI TRANG TỔNG QUAN */}
+<div className="bg-[#D1F4FA] dark:bg-gray-800 rounded-[2rem] p-8 flex justify-between items-center shadow-sm border border-blue-100 dark:border-gray-700">
+  <div className="flex items-center gap-5">
+    <div className="w-16 h-16 bg-blue-600/10 dark:bg-white/10 rounded-2xl flex items-center justify-center">
+      <Home className="w-8 h-8 text-blue-700 dark:text-blue-400" />
+    </div>
+    <div>
+      <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">
+        Quản Lý Phòng
+      </h1>
+    </div>
+  </div>
+
+  {/* Nút hành động - Giữ nguyên logic cũ nhưng cập nhật style cho sang hơn */}
+  <button 
+    onClick={handleAddClick}
+    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-bold uppercase text-sm transition-all shadow-md shadow-blue-200 dark:shadow-none active:scale-95"
+  >
+    + Thêm Phòng Mới
+  </button>
+</div>
 
       {/* FILTERS TOOLBAR */}
       <div className="bg-white rounded-[1.5rem] border border-gray-100 p-4 flex flex-wrap items-center gap-6 shadow-sm">

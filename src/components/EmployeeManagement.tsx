@@ -31,6 +31,8 @@ import {
   EyeOff,
   Clock,
   ArrowRight,
+  UserPlus,
+  ChevronDown,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { roleService } from "../services/roleService";
@@ -63,7 +65,6 @@ export function EmployeeManagement() {
   const [selectedEmp, setSelectedEmp] = useState<any>(null);
   const [selectedRoleId, setSelectedRoleId] = useState<string>("");
   const [isAssigning, setIsAssigning] = useState(false);
-
   // State Quản lý Role (Tab 2)
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
@@ -95,7 +96,11 @@ export function EmployeeManagement() {
   const [payroll, setPayroll] = useState<any[]>([]);
   const [loadingPayroll, setLoadingPayroll] = useState(false);
   const [month, setMonth] = useState(new Date().getMonth() + 1);
+  // state lọc và tim kiem
+  const [roleFilter, setRoleFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  // State điều khiển hiển thị Modal thêm nhân viên
+  const [showAddModal, setShowAddModal] = useState(false);
 
   // Lọc bảng lương theo tên nhân viên
   const filteredPayroll = payroll.filter((p: any) =>
@@ -369,20 +374,24 @@ export function EmployeeManagement() {
 
     if (res.success && res.data) {
       const mappedData = res.data.map((emp: any) => {
-        const role = emp.roles?.[0] || emp.roles; 
+        const role = emp.roles?.[0] || emp.roles;
         const baseSalary = Number(role?.base_salary || 0);
         const diligenceBonus = Number(role?.diligence_bonus || 0);
-        
+
         // Lấy danh sách chấm công
         const logs = emp.attendance || [];
         const workDays = logs.length;
-        
+
         // Tính tổng số phút đi muộn (Fix lỗi trống chỗ "ĐI MUỘN")
-        const totalLate = logs.reduce((sum: number, log: any) => sum + (log.late_minutes || 0), 0);
+        const totalLate = logs.reduce(
+          (sum: number, log: any) => sum + (log.late_minutes || 0),
+          0,
+        );
 
         // Tính lương
         const calculatedSalary = Math.round((baseSalary / 26) * workDays);
-        const totalSalary = calculatedSalary + (workDays >= 26 ? diligenceBonus : 0);
+        const totalSalary =
+          calculatedSalary + (workDays >= 26 ? diligenceBonus : 0);
 
         return {
           employee_id: emp.id,
@@ -396,12 +405,22 @@ export function EmployeeManagement() {
           // Map lại từng dòng log để Modal hiểu được
           dailyLogs: logs.map((l: any) => ({
             date: l.work_date, // Đổi từ work_date sang date
-            checkIn: l.check_in ? new Date(l.check_in).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) : "--:--",
-            checkOut: l.check_out ? new Date(l.check_out).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) : "--:--",
+            checkIn: l.check_in
+              ? new Date(l.check_in).toLocaleTimeString("vi-VN", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "--:--",
+            checkOut: l.check_out
+              ? new Date(l.check_out).toLocaleTimeString("vi-VN", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "--:--",
             late: l.late_minutes || 0,
             early: l.early_minutes || 0,
-            shiftName: l.shifts?.name || "Ca làm việc"
-          }))
+            shiftName: l.shifts?.name || "Ca làm việc",
+          })),
         };
       });
 
@@ -422,10 +441,19 @@ export function EmployeeManagement() {
         sự...
       </div>
     );
+  // Lọc danh sách nhân viên dựa trên State tìm kiếm và Role
+  const filteredEmployees = employees.filter((emp) => {
+    const matchesSearch =
+      emp.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.email?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesRole = roleFilter === "all" || emp.role === roleFilter;
+
+    return matchesSearch && matchesRole;
+  });
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20 font-sans antialiased">
-      
       {/* HEADER QUẢN LÝ NHÂN SỰ - CHUẨN TAILWIND */}
       <div className="bg-[#D1F4FA] dark:bg-gray-800 rounded-[2rem] p-8 flex flex-col md:flex-row gap-4 justify-between md:items-center shadow-sm border border-blue-100 dark:border-gray-700">
         <div className="flex items-center gap-5">
@@ -447,116 +475,222 @@ export function EmployeeManagement() {
           className={`pb-4 text-[13px] font-extrabold tracking-widest uppercase transition-all flex items-center gap-2 relative ${activeTab === "employees" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`}
         >
           <Users size={18} /> Danh sách nhân sự
-          {activeTab === "employees" && <div className="absolute bottom-[-2px] left-0 w-full h-1 bg-blue-600 dark:bg-blue-400 rounded-t-full" />}
+          {activeTab === "employees" && (
+            <div className="absolute bottom-[-2px] left-0 w-full h-1 bg-blue-600 dark:bg-blue-400 rounded-t-full" />
+          )}
         </button>
         <button
           onClick={() => setActiveTab("roles")}
           className={`pb-4 text-[13px] font-extrabold tracking-widest uppercase transition-all flex items-center gap-2 relative ${activeTab === "roles" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`}
         >
           <Settings2 size={18} /> Cấu hình chức vụ
-          {activeTab === "roles" && <div className="absolute bottom-[-2px] left-0 w-full h-1 bg-blue-600 dark:bg-blue-400 rounded-t-full" />}
+          {activeTab === "roles" && (
+            <div className="absolute bottom-[-2px] left-0 w-full h-1 bg-blue-600 dark:bg-blue-400 rounded-t-full" />
+          )}
         </button>
         <button
           onClick={() => setActiveTab("attendance")}
           className={`pb-4 text-[13px] font-extrabold tracking-widest uppercase transition-all flex items-center gap-2 relative ${activeTab === "attendance" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`}
         >
           <CalendarCheck size={18} /> Chấm Công
-          {activeTab === "attendance" && <div className="absolute bottom-[-2px] left-0 w-full h-1 bg-blue-600 dark:bg-blue-400 rounded-t-full" />}
+          {activeTab === "attendance" && (
+            <div className="absolute bottom-[-2px] left-0 w-full h-1 bg-blue-600 dark:bg-blue-400 rounded-t-full" />
+          )}
         </button>
         <button
           onClick={() => setActiveTab("payroll")}
           className={`pb-4 text-[13px] font-extrabold tracking-widest uppercase transition-all flex items-center gap-2 relative ${activeTab === "payroll" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`}
         >
           <CircleDollarSign size={18} /> Quản Lý Lương
-          {activeTab === "payroll" && <div className="absolute bottom-[-2px] left-0 w-full h-1 bg-blue-600 dark:bg-blue-400 rounded-t-full" />}
+          {activeTab === "payroll" && (
+            <div className="absolute bottom-[-2px] left-0 w-full h-1 bg-blue-600 dark:bg-blue-400 rounded-t-full" />
+          )}
         </button>
       </div>
 
       {/* TAB 1: DANH SÁCH NHÂN VIÊN */}
       {activeTab === "employees" && (
-        <div className="bg-white dark:bg-gray-800 rounded-[2rem] border-2 border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-gray-50 dark:bg-gray-900/50 border-b-2 border-gray-200 dark:border-gray-700">
-                <tr>
-                  <th className="px-6 py-5 text-[11px] font-extrabold uppercase text-gray-500 dark:text-gray-400 tracking-widest">Nhân viên</th>
-                  <th className="px-6 py-5 text-[11px] font-extrabold uppercase text-gray-500 dark:text-gray-400 tracking-widest">Vai trò / Quyền</th>
-                  <th className="px-6 py-5 text-[11px] font-extrabold uppercase text-gray-500 dark:text-gray-400 tracking-widest">Liên hệ</th>
-                  <th className="px-6 py-5 text-[11px] font-extrabold uppercase text-gray-500 dark:text-gray-400 tracking-widest text-center">Trạng thái</th>
-                  <th className="px-6 py-5 text-[11px] font-extrabold uppercase text-gray-500 dark:text-gray-400 tracking-widest text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {employees.map((emp) => (
-                  <tr key={emp.id} className="hover:bg-blue-50/50 dark:hover:bg-gray-700/50 transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-black text-lg shadow-inner">
-                          {emp.fullName?.charAt(0) || "U"}
-                        </div>
-                        <div>
-                          <div className="font-extrabold text-[15px] text-gray-900 dark:text-white uppercase">
-                            {emp.fullName}
-                          </div>
-                          <div className="text-[12px] font-bold text-gray-500 dark:text-gray-400">
-                            @{emp.email.split("@")[0]}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {emp.roles ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-xl text-[12px] font-extrabold border border-blue-200 dark:border-blue-800/50 uppercase tracking-wider">
-                          <Shield size={14} /> {emp.roles.name}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-xl text-[12px] font-extrabold border border-rose-200 dark:border-rose-800/50 uppercase tracking-wider">
-                          <ShieldAlert size={14} /> Chưa cấp quyền
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-[13px] font-extrabold text-gray-900 dark:text-white mb-0.5">
-                        {emp.email}
-                      </div>
-                      <div className="text-[12px] font-bold text-gray-500 dark:text-gray-400">
-                        {emp.phone || "N/A"}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <button
-                        onClick={() => handleToggleStatus(emp.id, emp.status)}
-                        className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${emp.status === "active" ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600"}`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${emp.status === "active" ? "translate-x-7" : "translate-x-1"}`}
-                        />
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2 opacity-100 md:opacity-60 md:group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => openAssignModal(emp)} className="p-2.5 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white rounded-xl border border-blue-200 dark:border-blue-800/50 transition-all" title="Gán quyền">
-                          <Shield size={16} />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditingEmployee(emp);
-                            setEmpFormData({ name: emp.fullName, email: emp.email, phone: emp.phone, password: "", role: emp.role });
-                            setShowEmpForm(true);
-                          }}
-                          className="p-2.5 text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl border border-gray-200 dark:border-gray-600 transition-all" title="Sửa thông tin"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button onClick={() => handleDeleteEmployee(emp.id)} className="p-2.5 text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 dark:hover:text-white rounded-xl border border-rose-200 dark:border-rose-800/50 transition-all" title="Xóa">
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
+        <div className="space-y-6">
+         {/* TOOLBAR: SEARCH - FILTER - ADD */}
+<div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white dark:bg-gray-800 p-5 rounded-[2rem] border-2 border-gray-100 dark:border-gray-700 shadow-sm">
+  <div className="flex flex-1 items-center gap-3 w-full md:w-auto">
+    {/* Ô tìm kiếm */}
+    <div className="relative flex-1 max-w-md flex items-center">
+      <div className="absolute left-4 inset-y-0 flex items-center pointer-events-none">
+        <Search className="text-gray-400" size={18} />
+      </div>
+      <input
+        type="text"
+        placeholder="Tìm tên hoặc email nhân viên..."
+        className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-gray-900 border-2 border-transparent focus:border-blue-500 dark:focus:border-blue-500 rounded-2xl outline-none font-bold transition-all text-gray-900 dark:text-white leading-relaxed"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
+    </div>
+
+    {/* Lọc theo chức vụ */}
+    <div className="relative flex items-center">
+      <select
+        className="appearance-none pl-4 pr-10 py-3 bg-gray-50 dark:bg-gray-900 border-2 border-transparent focus:border-blue-500 rounded-2xl font-extrabold text-gray-600 dark:text-gray-300 outline-none transition-all cursor-pointer leading-relaxed"
+        value={roleFilter}
+        onChange={(e) => setRoleFilter(e.target.value)}
+      >
+        <option value="all">Tất cả chức vụ</option>
+        {roles.map((r) => (
+          <option key={r.id} value={r.id}>
+            {r.name.toUpperCase()}
+          </option>
+        ))}
+      </select>
+      <div className="absolute right-3 inset-y-0 flex items-center pointer-events-none">
+        <ChevronDown size={16} className="text-gray-400" />
+      </div>
+    </div>
+  </div>
+
+  {/* Nút thêm nhân viên (Chỉ Admin thấy) */}
+  {isManager && (
+    <button
+      onClick={() => {
+        setEditingEmployee(null);
+        setEmpFormData({
+          name: "",
+          email: "",
+          phone: "",
+          password: "",
+          role: "staff",
+        });
+        setShowEmpForm(true);
+      }}
+      className="w-full md:w-auto flex items-center justify-center gap-2 px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl transition-all shadow-lg shadow-blue-200 dark:shadow-none uppercase tracking-widest text-[12px]"
+    >
+      <UserPlus size={20} />
+      Thêm nhân viên
+    </button>
+  )}
+</div>
+
+          {/* TABLE DANH SÁCH */}
+          <div className="bg-white dark:bg-gray-800 rounded-[2rem] border-2 border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-gray-50 dark:bg-gray-900/50 border-b-2 border-gray-200 dark:border-gray-700">
+                  <tr>
+                    <th className="px-6 py-5 text-[11px] font-extrabold uppercase text-gray-500 dark:text-gray-400 tracking-widest">
+                      Nhân viên
+                    </th>
+                    <th className="px-6 py-5 text-[11px] font-extrabold uppercase text-gray-500 dark:text-gray-400 tracking-widest">
+                      Vai trò / Quyền
+                    </th>
+                    <th className="px-6 py-5 text-[11px] font-extrabold uppercase text-gray-500 dark:text-gray-400 tracking-widest">
+                      Liên hệ
+                    </th>
+                    <th className="px-6 py-5 text-[11px] font-extrabold uppercase text-gray-500 dark:text-gray-400 tracking-widest text-center">
+                      Trạng thái
+                    </th>
+                    <th className="px-6 py-5 text-[11px] font-extrabold uppercase text-gray-500 dark:text-gray-400 tracking-widest text-right">
+                      Thao tác
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {filteredEmployees.map((emp) => (
+                    <tr
+                      key={emp.id}
+                      className="hover:bg-blue-50/50 dark:hover:bg-gray-700/50 transition-colors group"
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-black text-lg shadow-inner">
+                            {emp.fullName?.charAt(0) || "U"}
+                          </div>
+                          <div>
+                            <div className="font-extrabold text-[15px] text-gray-900 dark:text-white uppercase">
+                              {emp.fullName}
+                            </div>
+                            <div className="text-[12px] font-bold text-gray-500 dark:text-gray-400">
+                              @{emp.email.split("@")[0]}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {emp.roles ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-xl text-[12px] font-extrabold border border-blue-200 dark:border-blue-800/50 uppercase tracking-wider">
+                            <Shield size={14} /> {emp.roles.name}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-xl text-[12px] font-extrabold border border-rose-200 dark:border-rose-800/50 uppercase tracking-wider">
+                            <ShieldAlert size={14} /> Chưa cấp quyền
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-[13px] font-extrabold text-gray-900 dark:text-white mb-0.5">
+                          {emp.email}
+                        </div>
+                        <div className="text-[12px] font-bold text-gray-500 dark:text-gray-400">
+                          {emp.phone || "N/A"}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <button
+                          onClick={() => handleToggleStatus(emp.id, emp.status)}
+                          className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                            emp.status === "active"
+                              ? "bg-emerald-500"
+                              : "bg-gray-300 dark:bg-gray-600"
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${
+                              emp.status === "active"
+                                ? "translate-x-7"
+                                : "translate-x-1"
+                            }`}
+                          />
+                        </button>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2 opacity-100 md:opacity-60 md:group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => openAssignModal(emp)}
+                            className="p-2.5 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white rounded-xl border border-blue-200 dark:border-blue-800/50 transition-all"
+                            title="Gán quyền"
+                          >
+                            <Shield size={16} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingEmployee(emp);
+                              setEmpFormData({
+                                name: emp.fullName,
+                                email: emp.email,
+                                phone: emp.phone,
+                                password: "",
+                                role: emp.role,
+                              });
+                              setShowEmpForm(true);
+                            }}
+                            className="p-2.5 text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl border border-gray-200 dark:border-gray-600 transition-all"
+                            title="Sửa thông tin"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteEmployee(emp.id)}
+                            className="p-2.5 text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 dark:hover:text-white rounded-xl border border-rose-200 dark:border-rose-800/50 transition-all"
+                            title="Xóa"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -567,7 +701,11 @@ export function EmployeeManagement() {
           {roles.map((role) => (
             <div
               key={role.id}
-              onClick={() => setSelectedRolePreview(selectedRolePreview === role.id ? null : role.id)}
+              onClick={() =>
+                setSelectedRolePreview(
+                  selectedRolePreview === role.id ? null : role.id,
+                )
+              }
               className={`bg-white dark:bg-gray-800 p-6 rounded-[2rem] border-2 transition-all cursor-pointer group ${selectedRolePreview === role.id ? "border-blue-500 shadow-xl shadow-blue-500/10 dark:shadow-blue-900/20" : "border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-500/50"}`}
             >
               <div className="flex justify-between items-start mb-5">
@@ -578,7 +716,11 @@ export function EmployeeManagement() {
                   onClick={(e) => {
                     e.stopPropagation();
                     setEditingRole(role);
-                    setRoleFormData({ name: role.name, description: role.description || "", permissions: [...(role.permissions || [])] });
+                    setRoleFormData({
+                      name: role.name,
+                      description: role.description || "",
+                      permissions: [...(role.permissions || [])],
+                    });
                     setShowRoleModal(true);
                   }}
                   className="p-2.5 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white rounded-xl border border-blue-100 dark:border-blue-800/50 transition-all"
@@ -586,7 +728,9 @@ export function EmployeeManagement() {
                   <Edit size={16} />
                 </button>
               </div>
-              <h3 className="font-extrabold text-[16px] text-gray-900 dark:text-white uppercase tracking-tight">{role.name}</h3>
+              <h3 className="font-extrabold text-[16px] text-gray-900 dark:text-white uppercase tracking-tight">
+                {role.name}
+              </h3>
               <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-2 line-clamp-2 h-10 font-medium">
                 {role.description || "Chưa có mô tả"}
               </p>
@@ -607,12 +751,21 @@ export function EmployeeManagement() {
           {/* KHU VỰC BẤM GIỜ (HERO) */}
           <div className="bg-gradient-to-br from-sky-500 to-blue-600 rounded-[2.5rem] py-10 px-6 text-white text-center shadow-xl relative overflow-hidden">
             <div className="absolute -top-16 -left-16 w-64 h-64 bg-white/10 rounded-full blur-2xl"></div>
-            
+
             <p className="text-[12px] font-extrabold uppercase tracking-widest opacity-80 mb-2">
-              {currentTime.toLocaleDateString("vi-VN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+              {currentTime.toLocaleDateString("vi-VN", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
             </p>
             <h1 className="text-5xl md:text-6xl font-black mb-3 tracking-tighter drop-shadow-lg">
-              {currentTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+              {currentTime.toLocaleTimeString("vi-VN", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+              })}
             </h1>
             <div className="flex items-center justify-center gap-2 opacity-90 mb-10 font-bold text-[13px]">
               <MapPin size={16} /> <span>HotelPro - Chi nhánh Trung tâm</span>
@@ -620,36 +773,71 @@ export function EmployeeManagement() {
 
             <div className="bg-white dark:bg-gray-800 p-8 rounded-[2rem] text-gray-900 dark:text-white shadow-2xl relative z-10 mx-auto w-full">
               {loadingAttendance ? (
-                <p className="text-gray-500 dark:text-gray-400 font-bold animate-pulse">Đang tải dữ liệu...</p>
+                <p className="text-gray-500 dark:text-gray-400 font-bold animate-pulse">
+                  Đang tải dữ liệu...
+                </p>
               ) : !todayRecord ? (
                 <>
                   <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest text-left mb-4">
                     Chọn ca làm việc hôm nay
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-                    {(shifts && shifts.length > 0 ? shifts : [
-                      { id: "1", name: "Ca sáng", start_time: "06:00:00", end_time: "14:00:00" },
-                      { id: "2", name: "Ca tối", start_time: "14:00:00", end_time: "22:00:00" },
-                      { id: "3", name: "Ca đêm", start_time: "22:00:00", end_time: "06:00:00" },
-                    ]).map((s) => {
+                    {(shifts && shifts.length > 0
+                      ? shifts
+                      : [
+                          {
+                            id: "1",
+                            name: "Ca sáng",
+                            start_time: "06:00:00",
+                            end_time: "14:00:00",
+                          },
+                          {
+                            id: "2",
+                            name: "Ca tối",
+                            start_time: "14:00:00",
+                            end_time: "22:00:00",
+                          },
+                          {
+                            id: "3",
+                            name: "Ca đêm",
+                            start_time: "22:00:00",
+                            end_time: "06:00:00",
+                          },
+                        ]
+                    ).map((s) => {
                       const isSelected = selectedShift === s.id;
                       const isNight = s.name.toLowerCase().includes("đêm");
-                      const isEvening = s.name.toLowerCase().includes("tối") || s.name.toLowerCase().includes("chiều");
+                      const isEvening =
+                        s.name.toLowerCase().includes("tối") ||
+                        s.name.toLowerCase().includes("chiều");
                       return (
                         <div
                           key={s.id}
                           onClick={() => setSelectedShift(s.id)}
                           className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex flex-col items-center gap-3 text-center ${isSelected ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 shadow-md shadow-emerald-500/10 scale-105" : "border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-emerald-200 dark:hover:border-emerald-800"}`}
                         >
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isSelected ? "bg-emerald-500 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500"}`}>
-                            {isNight ? <Moon size={20} /> : isEvening ? <CloudMoon size={20} /> : <Sun size={20} />}
+                          <div
+                            className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isSelected ? "bg-emerald-500 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500"}`}
+                          >
+                            {isNight ? (
+                              <Moon size={20} />
+                            ) : isEvening ? (
+                              <CloudMoon size={20} />
+                            ) : (
+                              <Sun size={20} />
+                            )}
                           </div>
                           <div>
-                            <p className={`text-[14px] font-black uppercase whitespace-nowrap ${isSelected ? "text-emerald-700 dark:text-emerald-400" : "text-gray-900 dark:text-white"}`}>
+                            <p
+                              className={`text-[14px] font-black uppercase whitespace-nowrap ${isSelected ? "text-emerald-700 dark:text-emerald-400" : "text-gray-900 dark:text-white"}`}
+                            >
                               {s.name}
                             </p>
-                            <p className={`text-[11px] font-bold mt-1 ${isSelected ? "text-emerald-600 dark:text-emerald-500" : "text-gray-500 dark:text-gray-400"}`}>
-                              {s.start_time?.slice(0, 5) || "--:--"} - {s.end_time?.slice(0, 5) || "--:--"}
+                            <p
+                              className={`text-[11px] font-bold mt-1 ${isSelected ? "text-emerald-600 dark:text-emerald-500" : "text-gray-500 dark:text-gray-400"}`}
+                            >
+                              {s.start_time?.slice(0, 5) || "--:--"} -{" "}
+                              {s.end_time?.slice(0, 5) || "--:--"}
                             </p>
                           </div>
                         </div>
@@ -666,10 +854,17 @@ export function EmployeeManagement() {
               ) : !todayRecord.check_out ? (
                 <div className="py-2">
                   <div className="flex items-center justify-center gap-2 text-emerald-600 dark:text-emerald-400 font-extrabold text-[16px] mb-2">
-                    <CheckCircle2 size={24} /> Đã vào ca lúc {new Date(todayRecord.check_in).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                    <CheckCircle2 size={24} /> Đã vào ca lúc{" "}
+                    {new Date(todayRecord.check_in).toLocaleTimeString(
+                      "vi-VN",
+                      { hour: "2-digit", minute: "2-digit" },
+                    )}
                   </div>
                   <p className="text-[14px] text-gray-500 dark:text-gray-400 font-bold mb-8">
-                    Ca hiện tại: <span className="text-gray-900 dark:text-white font-black uppercase">{todayRecord.shifts?.name}</span>
+                    Ca hiện tại:{" "}
+                    <span className="text-gray-900 dark:text-white font-black uppercase">
+                      {todayRecord.shifts?.name}
+                    </span>
                   </p>
                   <button
                     onClick={handleCheckOut}
@@ -683,9 +878,15 @@ export function EmployeeManagement() {
                   <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mb-4">
                     <CheckCircle2 size={40} className="text-emerald-500" />
                   </div>
-                  <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase mb-2">Hoàn thành ngày công</h3>
+                  <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase mb-2">
+                    Hoàn thành ngày công
+                  </h3>
                   <p className="text-[14px] font-bold text-gray-500 dark:text-gray-400">
-                    Check-out lúc: {new Date(todayRecord.check_out).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                    Check-out lúc:{" "}
+                    {new Date(todayRecord.check_out).toLocaleTimeString(
+                      "vi-VN",
+                      { hour: "2-digit", minute: "2-digit" },
+                    )}
                   </p>
                 </div>
               )}
@@ -702,11 +903,16 @@ export function EmployeeManagement() {
             </div>
             <div className="p-6">
               {attendanceHistory.length === 0 ? (
-                <p className="text-center text-gray-500 dark:text-gray-400 font-bold py-10 text-[14px]">Chưa có dữ liệu.</p>
+                <p className="text-center text-gray-500 dark:text-gray-400 font-bold py-10 text-[14px]">
+                  Chưa có dữ liệu.
+                </p>
               ) : (
                 <div className="flex flex-col gap-4">
                   {attendanceHistory.map((log) => (
-                    <div key={log.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-700">
+                    <div
+                      key={log.id}
+                      className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-700"
+                    >
                       <div className="flex items-center gap-4">
                         <div className="w-14 h-14 bg-white dark:bg-gray-800 rounded-xl flex flex-col items-center justify-center border border-gray-200 dark:border-gray-600 shadow-sm">
                           <span className="text-[20px] font-black text-gray-900 dark:text-white leading-none">
@@ -721,21 +927,48 @@ export function EmployeeManagement() {
                             {log.shifts?.name}
                           </p>
                           <span className="text-[12px] font-bold text-gray-500 dark:text-gray-400">
-                            {log.shifts?.start_time?.slice(0, 5)} - {log.shifts?.end_time?.slice(0, 5)}
+                            {log.shifts?.start_time?.slice(0, 5)} -{" "}
+                            {log.shifts?.end_time?.slice(0, 5)}
                           </span>
                         </div>
                       </div>
                       <div className="text-right flex flex-col gap-1">
                         <p className="text-[13px] font-extrabold flex items-center justify-end gap-2">
-                          <span className="text-gray-400 text-[10px] uppercase">Vào:</span>
-                          <span className={log.late_minutes > 0 ? "text-amber-500" : "text-emerald-500"}>
-                            {log.check_in ? new Date(log.check_in).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "--:--"}
+                          <span className="text-gray-400 text-[10px] uppercase">
+                            Vào:
+                          </span>
+                          <span
+                            className={
+                              log.late_minutes > 0
+                                ? "text-amber-500"
+                                : "text-emerald-500"
+                            }
+                          >
+                            {log.check_in
+                              ? new Date(log.check_in).toLocaleTimeString(
+                                  "vi-VN",
+                                  { hour: "2-digit", minute: "2-digit" },
+                                )
+                              : "--:--"}
                           </span>
                         </p>
                         <p className="text-[13px] font-extrabold flex items-center justify-end gap-2">
-                          <span className="text-gray-400 text-[10px] uppercase">Ra:</span>
-                          <span className={log.early_minutes > 0 ? "text-rose-500" : "text-emerald-500"}>
-                            {log.check_out ? new Date(log.check_out).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "--:--"}
+                          <span className="text-gray-400 text-[10px] uppercase">
+                            Ra:
+                          </span>
+                          <span
+                            className={
+                              log.early_minutes > 0
+                                ? "text-rose-500"
+                                : "text-emerald-500"
+                            }
+                          >
+                            {log.check_out
+                              ? new Date(log.check_out).toLocaleTimeString(
+                                  "vi-VN",
+                                  { hour: "2-digit", minute: "2-digit" },
+                                )
+                              : "--:--"}
                           </span>
                         </p>
                       </div>
@@ -757,25 +990,35 @@ export function EmployeeManagement() {
                 Tổng quỹ lương tháng {month}
               </p>
               <p className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white tracking-tighter">
-                {formatCurrency(payroll.reduce((sum, p) => sum + p.total_salary, 0))}
+                {formatCurrency(
+                  payroll.reduce((sum, p) => sum + p.total_salary, 0),
+                )}
               </p>
             </div>
             <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center shrink-0">
-              <CircleDollarSign size={32} className="text-emerald-600 dark:text-emerald-400" />
+              <CircleDollarSign
+                size={32}
+                className="text-emerald-600 dark:text-emerald-400"
+              />
             </div>
           </div>
 
           {/* FILTERS PAYROLL */}
           <div className="flex flex-wrap items-center gap-4 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-[2rem] border-2 border-gray-200 dark:border-gray-700">
             <div className="flex items-center gap-3 bg-white dark:bg-gray-800 px-5 py-3 rounded-xl border border-gray-200 dark:border-gray-600 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10 transition-all">
-              <Calendar size={18} className="text-blue-600 dark:text-blue-400" />
+              <Calendar
+                size={18}
+                className="text-blue-600 dark:text-blue-400"
+              />
               <select
                 value={month}
                 onChange={(e) => setMonth(Number(e.target.value))}
                 className="bg-transparent border-none outline-none font-extrabold text-[14px] text-gray-700 dark:text-gray-200 cursor-pointer appearance-none"
               >
                 {[...Array(12)].map((_, i) => (
-                  <option key={i + 1} value={i + 1}>Tháng {i + 1} / 2026</option>
+                  <option key={i + 1} value={i + 1}>
+                    Tháng {i + 1} / 2026
+                  </option>
                 ))}
               </select>
             </div>
@@ -799,8 +1042,18 @@ export function EmployeeManagement() {
               <table className="w-full text-left border-collapse">
                 <thead className="bg-gray-50 dark:bg-gray-900/50 border-b-2 border-gray-200 dark:border-gray-700">
                   <tr>
-                    {["Nhân viên", "Ngày công", "Lương cơ bản", "Chuyên cần", "Thực lĩnh", "Thao tác"].map((head, i) => (
-                      <th key={i} className={`px-6 py-5 text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest whitespace-nowrap ${i === 1 ? 'text-center' : i === 5 ? 'text-right' : ''}`}>
+                    {[
+                      "Nhân viên",
+                      "Ngày công",
+                      "Lương cơ bản",
+                      "Chuyên cần",
+                      "Thực lĩnh",
+                      "Thao tác",
+                    ].map((head, i) => (
+                      <th
+                        key={i}
+                        className={`px-6 py-5 text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest whitespace-nowrap ${i === 1 ? "text-center" : i === 5 ? "text-right" : ""}`}
+                      >
                         {head}
                       </th>
                     ))}
@@ -810,20 +1063,35 @@ export function EmployeeManagement() {
                   {loadingPayroll ? (
                     <tr>
                       <td colSpan={6} className="py-16 text-center">
-                        <Loader2 className="animate-spin mx-auto text-blue-600 dark:text-blue-400 mb-3" size={32} />
-                        <p className="text-[12px] font-extrabold text-gray-400 uppercase tracking-widest">Đang tải dữ liệu...</p>
+                        <Loader2
+                          className="animate-spin mx-auto text-blue-600 dark:text-blue-400 mb-3"
+                          size={32}
+                        />
+                        <p className="text-[12px] font-extrabold text-gray-400 uppercase tracking-widest">
+                          Đang tải dữ liệu...
+                        </p>
                       </td>
                     </tr>
                   ) : (
                     filteredPayroll.map((p, idx) => (
-                      <tr key={idx} className="hover:bg-blue-50/50 dark:hover:bg-gray-700/50 transition-colors group">
+                      <tr
+                        key={idx}
+                        className="hover:bg-blue-50/50 dark:hover:bg-gray-700/50 transition-colors group"
+                      >
                         <td className="px-6 py-4">
-                          <div className="font-extrabold text-[15px] text-gray-900 dark:text-white uppercase mb-0.5 whitespace-nowrap">{p.fullName}</div>
-                          <div className="text-[11px] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-wider">{p.roleName}</div>
+                          <div className="font-extrabold text-[15px] text-gray-900 dark:text-white uppercase mb-0.5 whitespace-nowrap">
+                            {p.fullName}
+                          </div>
+                          <div className="text-[11px] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                            {p.roleName}
+                          </div>
                         </td>
                         <td className="px-6 py-4 text-center">
-                          <div className={`inline-block px-4 py-1.5 rounded-xl text-[13px] font-black border ${p.work_days >= 26 ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50" : "bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/50"}`}>
-                            {p.work_days} <span className="opacity-50 text-[11px]">/ 26</span>
+                          <div
+                            className={`inline-block px-4 py-1.5 rounded-xl text-[13px] font-black border ${p.work_days >= 26 ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50" : "bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/50"}`}
+                          >
+                            {p.work_days}{" "}
+                            <span className="opacity-50 text-[11px]">/ 26</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-[14px] font-extrabold text-gray-600 dark:text-gray-300 whitespace-nowrap">
@@ -832,10 +1100,16 @@ export function EmployeeManagement() {
                         <td className="px-6 py-4">
                           {p.diligence_bonus > 0 ? (
                             <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-black text-[13px] whitespace-nowrap">
-                              <Star size={14} className="fill-emerald-600 dark:fill-emerald-400" /> + {formatCurrency(p.diligence_bonus)}
+                              <Star
+                                size={14}
+                                className="fill-emerald-600 dark:fill-emerald-400"
+                              />{" "}
+                              + {formatCurrency(p.diligence_bonus)}
                             </div>
                           ) : (
-                            <span className="text-[12px] font-bold text-gray-400 dark:text-gray-500">Không đạt</span>
+                            <span className="text-[12px] font-bold text-gray-400 dark:text-gray-500">
+                              Không đạt
+                            </span>
                           )}
                         </td>
                         <td className="px-6 py-4 text-[16px] font-black text-blue-600 dark:text-blue-400 whitespace-nowrap">
@@ -843,10 +1117,16 @@ export function EmployeeManagement() {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex justify-end gap-2 opacity-100 md:opacity-60 md:group-hover:opacity-100 transition-all">
-                            <button onClick={() => setSelectedStaff(p)} className="p-2.5 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl border border-gray-200 dark:border-gray-600 transition-all">
+                            <button
+                              onClick={() => setSelectedStaff(p)}
+                              className="p-2.5 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl border border-gray-200 dark:border-gray-600 transition-all"
+                            >
                               <Eye size={16} />
                             </button>
-                            <button onClick={() => handlePaySalary(p)} className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider transition-all shadow-md active:scale-95 whitespace-nowrap">
+                            <button
+                              onClick={() => handlePaySalary(p)}
+                              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider transition-all shadow-md active:scale-95 whitespace-nowrap"
+                            >
                               Thanh toán
                             </button>
                           </div>
@@ -871,28 +1151,80 @@ export function EmployeeManagement() {
               <h3 className="text-xl font-extrabold uppercase tracking-tight">
                 {editingEmployee ? "Chỉnh sửa nhân viên" : "Thêm nhân viên mới"}
               </h3>
-              <button onClick={() => setShowEmpForm(false)} className="hover:rotate-90 transition-transform"><X /></button>
+              <button
+                onClick={() => setShowEmpForm(false)}
+                className="hover:rotate-90 transition-transform"
+              >
+                <X />
+              </button>
             </div>
             <form onSubmit={handleEmpSubmit} className="p-8 space-y-5">
-               {/* Giữ nguyên các thẻ input, chỉ thêm class Tailwind focus-ring */}
-               <div>
-                <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">Họ và tên *</label>
-                <input required value={empFormData.name} onChange={(e) => setEmpFormData({ ...empFormData, name: e.target.value })} className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/80 border-2 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 font-bold outline-none transition-all" placeholder="Nguyễn Văn A" />
+              {/* Giữ nguyên các thẻ input, chỉ thêm class Tailwind focus-ring */}
+              <div>
+                <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
+                  Họ và tên *
+                </label>
+                <input
+                  required
+                  value={empFormData.name}
+                  onChange={(e) =>
+                    setEmpFormData({ ...empFormData, name: e.target.value })
+                  }
+                  className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/80 border-2 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 font-bold outline-none transition-all"
+                  placeholder="Nguyễn Văn A"
+                />
               </div>
               <div>
-                <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">Số điện thoại</label>
-                <input type="tel" value={empFormData.phone} onChange={(e) => setEmpFormData({ ...empFormData, phone: e.target.value })} className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/80 border-2 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 font-bold outline-none transition-all" placeholder="09xxx..." />
+                <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
+                  Số điện thoại
+                </label>
+                <input
+                  type="tel"
+                  value={empFormData.phone}
+                  onChange={(e) =>
+                    setEmpFormData({ ...empFormData, phone: e.target.value })
+                  }
+                  className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/80 border-2 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 font-bold outline-none transition-all"
+                  placeholder="09xxx..."
+                />
               </div>
               <div>
-                <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">Email liên hệ *</label>
-                <input required type="email" value={empFormData.email} onChange={(e) => setEmpFormData({ ...empFormData, email: e.target.value })} className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/80 border-2 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 font-bold outline-none transition-all" placeholder="example@gmail.com" />
+                <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
+                  Email liên hệ *
+                </label>
+                <input
+                  required
+                  type="email"
+                  value={empFormData.email}
+                  onChange={(e) =>
+                    setEmpFormData({ ...empFormData, email: e.target.value })
+                  }
+                  className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/80 border-2 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 font-bold outline-none transition-all"
+                  placeholder="example@gmail.com"
+                />
               </div>
               <div>
-                <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">Mật khẩu khởi tạo *</label>
-                <input required type="password" value={empFormData.password} onChange={(e) => setEmpFormData({ ...empFormData, password: e.target.value })} className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/80 border-2 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 font-bold outline-none transition-all" placeholder="Nhập ít nhất 6 ký tự..." />
-                <p className="text-[11px] font-semibold text-gray-400 mt-2 ml-1">* Nhân viên sẽ dùng email và mật khẩu này để đăng nhập.</p>
+                <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
+                  Mật khẩu khởi tạo *
+                </label>
+                <input
+                  required
+                  type="password"
+                  value={empFormData.password}
+                  onChange={(e) =>
+                    setEmpFormData({ ...empFormData, password: e.target.value })
+                  }
+                  className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/80 border-2 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 font-bold outline-none transition-all"
+                  placeholder="Nhập ít nhất 6 ký tự..."
+                />
+                <p className="text-[11px] font-semibold text-gray-400 mt-2 ml-1">
+                  * Nhân viên sẽ dùng email và mật khẩu này để đăng nhập.
+                </p>
               </div>
-              <button type="submit" className="w-full py-4 mt-6 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-extrabold uppercase tracking-widest text-[13px] shadow-lg shadow-blue-500/30 transition-all active:scale-95">
+              <button
+                type="submit"
+                className="w-full py-4 mt-6 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-extrabold uppercase tracking-widest text-[13px] shadow-lg shadow-blue-500/30 transition-all active:scale-95"
+              >
                 {editingEmployee ? "Cập nhật ngay" : "Thêm vào hệ thống"}
               </button>
             </form>
@@ -905,23 +1237,48 @@ export function EmployeeManagement() {
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[100] p-4">
           <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in duration-300 border border-gray-200 dark:border-gray-700">
             <div className="p-6 border-b-2 border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50">
-              <h3 className="text-xl font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">Phân Quyền Nhân Sự</h3>
-              <button onClick={() => setShowAssignModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"><X /></button>
+              <h3 className="text-xl font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">
+                Phân Quyền Nhân Sự
+              </h3>
+              <button
+                onClick={() => setShowAssignModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+              >
+                <X />
+              </button>
             </div>
             <div className="p-8 space-y-6">
               <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-100 dark:border-blue-800/50">
-                <p className="text-[11px] font-extrabold text-blue-500 dark:text-blue-400 uppercase tracking-widest mb-1">Đang cấu hình cho</p>
-                <p className="text-[16px] font-black text-gray-900 dark:text-white uppercase">{selectedEmp.fullName}</p>
+                <p className="text-[11px] font-extrabold text-blue-500 dark:text-blue-400 uppercase tracking-widest mb-1">
+                  Đang cấu hình cho
+                </p>
+                <p className="text-[16px] font-black text-gray-900 dark:text-white uppercase">
+                  {selectedEmp.fullName}
+                </p>
               </div>
               <div className="grid gap-3 max-h-[40vh] overflow-y-auto pr-2">
                 {roles.map((r) => (
-                  <button key={r.id} onClick={() => setSelectedRoleId(r.id)} className={`p-5 rounded-2xl border-2 text-left transition-all ${selectedRoleId === r.id ? "border-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:border-blue-500" : "border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 bg-white dark:bg-gray-800"}`}>
-                    <p className={`font-extrabold uppercase text-[13px] ${selectedRoleId === r.id ? 'text-blue-700 dark:text-blue-400' : 'text-gray-900 dark:text-white'}`}>{r.name}</p>
-                    <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mt-1">{r.permissions?.length} quyền hạn được gán</p>
+                  <button
+                    key={r.id}
+                    onClick={() => setSelectedRoleId(r.id)}
+                    className={`p-5 rounded-2xl border-2 text-left transition-all ${selectedRoleId === r.id ? "border-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:border-blue-500" : "border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 bg-white dark:bg-gray-800"}`}
+                  >
+                    <p
+                      className={`font-extrabold uppercase text-[13px] ${selectedRoleId === r.id ? "text-blue-700 dark:text-blue-400" : "text-gray-900 dark:text-white"}`}
+                    >
+                      {r.name}
+                    </p>
+                    <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mt-1">
+                      {r.permissions?.length} quyền hạn được gán
+                    </p>
                   </button>
                 ))}
               </div>
-              <button onClick={handleAssignRoleSubmit} disabled={isAssigning} className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-extrabold uppercase tracking-widest text-[13px] shadow-lg shadow-blue-500/30 transition-all disabled:opacity-50 active:scale-95">
+              <button
+                onClick={handleAssignRoleSubmit}
+                disabled={isAssigning}
+                className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-extrabold uppercase tracking-widest text-[13px] shadow-lg shadow-blue-500/30 transition-all disabled:opacity-50 active:scale-95"
+              >
                 {isAssigning ? "Đang lưu..." : "Xác nhận thay đổi"}
               </button>
             </div>
@@ -934,44 +1291,101 @@ export function EmployeeManagement() {
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[110] p-4">
           <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden animate-in zoom-in duration-300 border border-gray-200 dark:border-gray-700">
             <div className="p-8 border-b border-gray-700 bg-gray-900 text-white flex justify-between items-center shrink-0">
-              <h3 className="text-xl font-extrabold uppercase tracking-tight">{editingRole ? "Chỉnh sửa vai trò" : "Tạo vai trò mới"}</h3>
-              <button onClick={() => setShowRoleModal(false)} className="hover:rotate-90 transition-transform"><X /></button>
+              <h3 className="text-xl font-extrabold uppercase tracking-tight">
+                {editingRole ? "Chỉnh sửa vai trò" : "Tạo vai trò mới"}
+              </h3>
+              <button
+                onClick={() => setShowRoleModal(false)}
+                className="hover:rotate-90 transition-transform"
+              >
+                <X />
+              </button>
             </div>
             <div className="p-8 overflow-y-auto space-y-8 bg-gray-50 dark:bg-gray-900/50 flex-1">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">Tên vai trò</label>
-                    <input value={roleFormData.name} onChange={(e) => setRoleFormData({ ...roleFormData, name: e.target.value })} className="w-full px-5 py-3.5 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-2xl font-bold text-[14px] text-gray-900 dark:text-white outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all" placeholder="VD: Lễ tân, Quản lý..." />
+                  <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
+                    Tên vai trò
+                  </label>
+                  <input
+                    value={roleFormData.name}
+                    onChange={(e) =>
+                      setRoleFormData({ ...roleFormData, name: e.target.value })
+                    }
+                    className="w-full px-5 py-3.5 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-2xl font-bold text-[14px] text-gray-900 dark:text-white outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                    placeholder="VD: Lễ tân, Quản lý..."
+                  />
                 </div>
                 <div>
-                    <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">Mô tả chức năng</label>
-                    <input value={roleFormData.description} onChange={(e) => setRoleFormData({ ...roleFormData, description: e.target.value })} className="w-full px-5 py-3.5 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-2xl font-bold text-[14px] text-gray-900 dark:text-white outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all" placeholder="Mô tả chức năng chính..." />
+                  <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">
+                    Mô tả chức năng
+                  </label>
+                  <input
+                    value={roleFormData.description}
+                    onChange={(e) =>
+                      setRoleFormData({
+                        ...roleFormData,
+                        description: e.target.value,
+                      })
+                    }
+                    className="w-full px-5 py-3.5 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-2xl font-bold text-[14px] text-gray-900 dark:text-white outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                    placeholder="Mô tả chức năng chính..."
+                  />
                 </div>
               </div>
               <div className="space-y-6">
                 {modules.map((module) => (
-                  <div key={module} className="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 p-6 rounded-[2rem]">
+                  <div
+                    key={module}
+                    className="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 p-6 rounded-[2rem]"
+                  >
                     <h4 className="font-extrabold text-gray-900 dark:text-white mb-5 uppercase text-[12px] tracking-widest border-l-4 border-blue-600 pl-3">
                       {module}
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {allPermissions.filter((p) => p.module === module).map((perm) => (
-                        <label key={perm.id} className={`flex items-start gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all ${roleFormData.permissions.includes(perm.id) ? "border-blue-600 bg-blue-50/50 dark:bg-blue-900/20 dark:border-blue-500" : "border-gray-100 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-500"}`}>
-                          <input type="checkbox" checked={roleFormData.permissions.includes(perm.id)} onChange={() => togglePermission(perm.id)} className="mt-1 w-4.5 h-4.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                          <div>
-                            <p className="font-extrabold text-[13px] uppercase text-gray-900 dark:text-white">{perm.name}</p>
-                            <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mt-1">{perm.description}</p>
-                          </div>
-                        </label>
-                      ))}
+                      {allPermissions
+                        .filter((p) => p.module === module)
+                        .map((perm) => (
+                          <label
+                            key={perm.id}
+                            className={`flex items-start gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all ${roleFormData.permissions.includes(perm.id) ? "border-blue-600 bg-blue-50/50 dark:bg-blue-900/20 dark:border-blue-500" : "border-gray-100 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-500"}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={roleFormData.permissions.includes(
+                                perm.id,
+                              )}
+                              onChange={() => togglePermission(perm.id)}
+                              className="mt-1 w-4.5 h-4.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <div>
+                              <p className="font-extrabold text-[13px] uppercase text-gray-900 dark:text-white">
+                                {perm.name}
+                              </p>
+                              <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mt-1">
+                                {perm.description}
+                              </p>
+                            </div>
+                          </label>
+                        ))}
                     </div>
                   </div>
                 ))}
               </div>
             </div>
             <div className="p-6 border-t-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex justify-end gap-4 shrink-0">
-              <button onClick={() => setShowRoleModal(false)} className="px-8 py-3.5 font-extrabold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors text-[13px] uppercase tracking-wider">Hủy bỏ</button>
-              <button onClick={handleSaveRole} className="px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-extrabold text-[13px] uppercase tracking-wider shadow-lg shadow-blue-500/30 transition-all active:scale-95">Lưu cấu hình</button>
+              <button
+                onClick={() => setShowRoleModal(false)}
+                className="px-8 py-3.5 font-extrabold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors text-[13px] uppercase tracking-wider"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={handleSaveRole}
+                className="px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-extrabold text-[13px] uppercase tracking-wider shadow-lg shadow-blue-500/30 transition-all active:scale-95"
+              >
+                Lưu cấu hình
+              </button>
             </div>
           </div>
         </div>
@@ -985,46 +1399,87 @@ export function EmployeeManagement() {
               <div className="flex items-center gap-4">
                 <Clock size={28} />
                 <div>
-                  <h2 className="m-0 text-2xl font-black uppercase tracking-tight">Nhật ký chấm công</h2>
-                  <p className="m-0 text-[13px] font-medium opacity-90 mt-1">{selectedStaff.fullName} • Tháng {month}/2026</p>
+                  <h2 className="m-0 text-2xl font-black uppercase tracking-tight">
+                    Nhật ký chấm công
+                  </h2>
+                  <p className="m-0 text-[13px] font-medium opacity-90 mt-1">
+                    {selectedStaff.fullName} • Tháng {month}/2026
+                  </p>
                 </div>
               </div>
-              <button onClick={() => setSelectedStaff(null)} className="hover:rotate-90 transition-transform"><X size={24} /></button>
+              <button
+                onClick={() => setSelectedStaff(null)}
+                className="hover:rotate-90 transition-transform"
+              >
+                <X size={24} />
+              </button>
             </div>
-            
+
             <div className="p-8 overflow-y-auto bg-gray-50 dark:bg-gray-900/50 flex-1">
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="bg-emerald-50 dark:bg-emerald-900/30 p-5 rounded-[1.5rem] border-2 border-emerald-200 dark:border-emerald-800/50 text-center">
-                  <p className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-1">TỔNG CÔNG</p>
-                  <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400">{selectedStaff.work_days}</p>
+                  <p className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-1">
+                    TỔNG CÔNG
+                  </p>
+                  <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400">
+                    {selectedStaff.work_days}
+                  </p>
                 </div>
                 <div className="bg-amber-50 dark:bg-amber-900/30 p-5 rounded-[1.5rem] border-2 border-amber-200 dark:border-amber-800/50 text-center">
-                  <p className="text-[11px] font-black text-amber-600 dark:text-amber-500 uppercase tracking-widest mb-1">ĐI MUỘN</p>
-                  <p className="text-3xl font-black text-amber-600 dark:text-amber-500">{selectedStaff.total_late}p</p>
+                  <p className="text-[11px] font-black text-amber-600 dark:text-amber-500 uppercase tracking-widest mb-1">
+                    ĐI MUỘN
+                  </p>
+                  <p className="text-3xl font-black text-amber-600 dark:text-amber-500">
+                    {selectedStaff.total_late}p
+                  </p>
                 </div>
               </div>
 
               <div className="flex flex-col gap-3">
                 {selectedStaff.dailyLogs?.map((log: any, i: number) => (
-                  <div key={i} className="bg-white dark:bg-gray-800 p-4 rounded-2xl border-2 border-gray-100 dark:border-gray-700 flex justify-between items-center hover:border-blue-200 transition-colors">
+                  <div
+                    key={i}
+                    className="bg-white dark:bg-gray-800 p-4 rounded-2xl border-2 border-gray-100 dark:border-gray-700 flex justify-between items-center hover:border-blue-200 transition-colors"
+                  >
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-gray-50 dark:bg-gray-900 rounded-xl flex items-center justify-center border border-gray-200 dark:border-gray-700">
-                        <span className="text-[16px] font-black text-gray-900 dark:text-white">{new Date(log.date).getDate()}</span>
+                        <span className="text-[16px] font-black text-gray-900 dark:text-white">
+                          {new Date(log.date).getDate()}
+                        </span>
                       </div>
                       <div>
-                        <p className="text-[13px] font-extrabold text-gray-900 dark:text-white uppercase mb-0.5">{log.shiftName}</p>
-                        <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400">{log.shiftTime}</p>
+                        <p className="text-[13px] font-extrabold text-gray-900 dark:text-white uppercase mb-0.5">
+                          {log.shiftName}
+                        </p>
+                        <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                          {log.shiftTime}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-4 text-right">
                       <div className="flex flex-col">
-                        <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-0.5">Vào:</span>
-                        <span className={`text-[14px] font-black ${log.late > 0 ? "text-amber-500" : "text-emerald-500"}`}>{log.checkIn}</span>
+                        <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-0.5">
+                          Vào:
+                        </span>
+                        <span
+                          className={`text-[14px] font-black ${log.late > 0 ? "text-amber-500" : "text-emerald-500"}`}
+                        >
+                          {log.checkIn}
+                        </span>
                       </div>
-                      <ArrowRight size={14} className="text-gray-300 dark:text-gray-600" />
+                      <ArrowRight
+                        size={14}
+                        className="text-gray-300 dark:text-gray-600"
+                      />
                       <div className="flex flex-col">
-                        <span className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-0.5">Ra:</span>
-                        <span className={`text-[14px] font-black ${log.early > 0 ? "text-rose-500" : "text-emerald-500"}`}>{log.checkOut}</span>
+                        <span className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-0.5">
+                          Ra:
+                        </span>
+                        <span
+                          className={`text-[14px] font-black ${log.early > 0 ? "text-rose-500" : "text-emerald-500"}`}
+                        >
+                          {log.checkOut}
+                        </span>
                       </div>
                     </div>
                   </div>

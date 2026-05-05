@@ -14,12 +14,15 @@ import {
   Home,
   CheckCircle2,
   RefreshCw,
+  Eye,
+  Plus,
 } from "lucide-react";
 import { checkInOutService } from "../services/checkInOutService";
 import { roomService, Room } from "../services/roomService";
 import { toast } from "sonner";
 import { CheckoutModal } from "../modal/checkOutModal";
 import { BookingForm } from "./BookingForm";
+import { BookingDetail } from "./BookingDetail";
 
 export function CheckInOut() {
   const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
@@ -65,7 +68,7 @@ export function CheckInOut() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
-
+  const [isBookingDetailOpen, setIsBookingDetailOpen] = useState(false);
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(
     null,
@@ -78,51 +81,35 @@ export function CheckInOut() {
     setFilterType("all");
   }, [activeTab]);
 
-  const loadData = async () => {
+ const loadData = async () => {
     setLoading(true);
     try {
+      // Chạy song song 2 hàm lấy data
       const [bookingRes, roomRes] = await Promise.all([
         checkInOutService.getCheckInOutList(),
         roomService.getAllRooms(),
       ]);
+
+      // Nếu thành công thì set data
       if (bookingRes.success) setBookings(bookingRes.data || []);
       if (roomRes.success) setRooms(roomRes.data || []);
+      
+      // Nếu lỗi 400, log ra để mình biết là hàm nào chết
+      if (!bookingRes.success) console.error("Lỗi Booking:", bookingRes.error);
+      if (!roomRes.success) console.error("Lỗi Room:", roomRes.error);
+
     } catch (error) {
+      console.error("Lỗi hệ thống:", error);
       toast.error("Không thể kết nối máy chủ");
+    } finally {
+      // QUAN TRỌNG NHẤT: Bắt buộc phải tắt loading ở đây
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
     loadData();
   }, []);
-
-  // --- 2. LOGIC LỌC PHÒNG (FIX LỖI BỘ LỌC MÀU VÀNG) ---
-  // const filteredRooms = rooms.filter((room) => {
-  //   // Khớp Search (Số phòng)
-  //   const searchMatch = room.room_number
-  //     .toString()
-  //     .toLowerCase()
-  //     .includes(searchTerm.toLowerCase());
-
-  //   // Khớp Loại phòng
-  //   const typeMatch = filterType === "all" || room.room_type === filterType;
-
-  //   // Khớp Trạng thái (Quan trọng nhất)
-  //   let statusMatch = false;
-  //   if (filterStatus === "all") {
-  //     statusMatch = true;
-  //   } else if (filterStatus === "available") {
-  //     statusMatch = room.status === "available";
-  //   } else if (filterStatus === "occupied") {
-  //     statusMatch = room.status === "occupied";
-  //   } else if (filterStatus === "maintenance") {
-  //     // Nếu không phải Xanh (available) và Đỏ (occupied) thì là Vàng
-  //     statusMatch = room.status !== "available" && room.status !== "occupied";
-  //   }
-
-  //   return searchMatch && typeMatch && statusMatch;
-  // });
   const filteredRooms = roomsWithBookingData.filter((room) => {
     const searchMatch = room.room_number.toString().includes(searchTerm);
     const typeMatch = filterType === "all" || room.room_type === filterType;
@@ -525,33 +512,48 @@ export function CheckInOut() {
                               Đặt phòng
                             </button>
                           ) : room.status === "occupied" ? (
-                            <>
-                              {/* Nút Thanh toán (Chiếm 70% chiều rộng) */}
-                              <button
-                                onClick={() =>
-                                  handleUpdateStatus(
-                                    room.activeBooking?.id || booking?.id,
-                                    "checked_out",
-                                    "",
-                                  )
-                                }
-                                className="flex-[3] py-3 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-xl font-black text-[10px] uppercase tracking-wider border border-purple-100 dark:border-purple-800 transition-all hover:bg-purple-100"
-                              >
-                                Thanh toán
-                              </button>
+  <div className="flex flex-col gap-2 w-full mt-4">
+    {/* TẦNG 1: CHI TIẾT & THÊM DỊCH VỤ (Ở TRÊN) */}
+    <div className="flex gap-2">
+      {/* Nút Chi tiết - Mở Modal xem bill và thông tin khách */}
+      <button
+        onClick={() => {
+          setSelectedBookingId(room.activeBooking?.id);
+          setIsBookingDetailOpen(true);
+        }}
+        className="flex-1 py-2.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-xl font-black text-[10px] uppercase tracking-widest border border-indigo-100 dark:border-indigo-800 transition-all hover:bg-indigo-600 hover:text-white flex items-center justify-center gap-2 shadow-sm"
+      >
+        <Eye size={14} strokeWidth={3} /> Chi tiết
+      </button>
 
-                              {/* Nút Đặt trước cho khách sau (Chiếm 30% chiều rộng) */}
-                              <button
-                                onClick={() => handleOpenQuickBook(room)}
-                                className="flex-1 py-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl font-black text-[11px] uppercase border border-blue-100 dark:border-blue-800 transition-all hover:bg-blue-600 hover:text-white group flex items-center justify-center"
-                                title="Đặt gối đầu cho khách tiếp theo"
-                              >
-                                <span className="group-hover:scale-125 transition-transform">
-                                  +
-                                </span>
-                              </button>
-                            </>
-                          ) : (
+      {/* Nút Thêm dịch vụ/Phụ phí nhanh - Icon dấu cộng nổi bật */}
+      <button
+        onClick={() => {
+          setSelectedBookingId(room.activeBooking?.id);
+          setIsBookingDetailOpen(true); // Trỏ thẳng vào Detail vì trong đó có form thêm dịch vụ rồi
+        }}
+        className="px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl border border-blue-100 dark:border-blue-800 transition-all hover:bg-blue-600 hover:text-white flex items-center justify-center"
+        title="Thêm dịch vụ & Phụ phí"
+      >
+        <Plus size={18} strokeWidth={3} />
+      </button>
+    </div>
+
+    {/* TẦNG 2: THANH TOÁN (NẰM DƯỚI CÙNG - TO VÀ RÕ) */}
+    <button
+      onClick={() =>
+        handleUpdateStatus(
+          room.activeBooking?.id || booking?.id,
+          "checked_out",
+          "Tiến hành thanh toán",
+        )
+      }
+      className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black text-[11px] uppercase tracking-wider shadow-lg shadow-rose-500/30 transition-all active:scale-95 flex items-center justify-center gap-2"
+    >
+      <Receipt size={16} /> Thanh toán
+    </button>
+  </div>
+) : (
                             /* Trạng thái Maintenance / Dọn dẹp */
                             <button
                               onClick={() => handleMarkAsReady(room.id)}
@@ -686,6 +688,16 @@ export function CheckInOut() {
           )}
         </div>
       </div>
+      {/* MODAL CHI TIẾT ĐẶT PHÒNG */}
+      {isBookingDetailOpen && selectedBookingId && (
+        <BookingDetail
+          bookingId={selectedBookingId}
+          onClose={() => {
+            setIsBookingDetailOpen(false);
+            loadData(); // Load lại data để cập nhật tiền nong nếu có thêm dịch vụ
+          }}
+        />
+      )}
 
       {isBookingFormOpen && (
         <BookingForm

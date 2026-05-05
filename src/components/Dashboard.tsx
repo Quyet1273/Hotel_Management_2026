@@ -220,7 +220,7 @@ export function Dashboard() {
           </div>
           <div>
             <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">
-              Bảng Điều Khiển Hệ Thống
+              Tổng Quan 
             </h1>
           </div>
         </div>
